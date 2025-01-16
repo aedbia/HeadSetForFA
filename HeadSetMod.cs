@@ -1,5 +1,7 @@
-﻿using FacialAnimation;
+﻿using ABEasyLib;
+using FacialAnimation;
 using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -11,435 +13,384 @@ namespace HeadSetForFA
     public class HeadSetMod : Mod
     {
         public static HSMSetting setting;
-        public static ModContentPack contentPack;
-        private static Vector2 po = Vector2.zero;
-        private static Vector2 po1 = Vector2.zero;
-        private static float LabelHeigh = 0;
-        private static float AgeBarHeigh = 0;
-        private static int LabelHeighLimit = 0;
-        private static string raceName = "Race";
-        private static string AgeStage = "AgeStage";
-        private static bool XenoMode = false;
-        private static float? showAge;
-        private static GUIStyle TextStyle
-        {
-            get
-            {
-                GUIStyle x = Text.CurTextAreaReadOnlyStyle;
-                x.alignment = TextAnchor.MiddleCenter;
-                return x;
-            }
-        }
+        private static Vector2 ScrollPosition0 = Vector2.zero;
+        private string search = "";
+        private static List<ABEasyUtility.ScrollViewContent> settingsContent = new List<ABEasyUtility.ScrollViewContent>();
+        private bool isFliter = false;
+        private static List<ABEasyUtility.ScrollViewContent> fliters = new List<ABEasyUtility.ScrollViewContent>();
         public HeadSetMod(ModContentPack content) : base(content)
         {
             setting = GetSettings<HSMSetting>();
-            contentPack = content;
         }
 
         public override void WriteSettings()
         {
-            if (raceName != "Race" && AgeStage != "AgeStage")
-            {
-                if (AgeStage == "No_AgeStage")
-                {
-                    ResolveFaceGraphics(raceName, null);
-                }
-                else
-                {
-                    ResolveFaceGraphics(raceName, AgeStage);
-                }
-            }
+
             base.WriteSettings();
         }
         public override void DoSettingsWindowContents(Rect inRect)
         {
-            Rect OutRect = inRect.LeftPart(0.12f).TopPart(0.95f);
-            Rect viewRect = new Rect(0, 0, OutRect.width, LabelHeigh);
-            Rect rect0 = new Rect(0, 0, OutRect.width, 0);
-            Widgets.DrawBox(OutRect, 1, BaseContent.WhiteTex);
-            Widgets.BeginScrollView(OutRect, ref po, viewRect, false);
-            string s = "No_AgeStage";
-            if (!HSMCache.FARaceList.NullOrEmpty())
+            Rect rect0 = inRect.TopPart(0.04f);
+            Rect sl = new Rect(rect0.x, rect0.y, rect0.height, rect0.height);
+            Rect el = new Rect(rect0.x + rect0.height + 5f, rect0.y, rect0.width - rect0.height - 10f, rect0.height);
+            search = TextArea(el, search);
+            if (ButtonImage(sl, TexButton.SearchButton))
             {
-                if (raceName == "Race")
-                {
-                    raceName = HSMCache.FARaceList.FirstOrDefault().defName;
-                }
-                if (raceName != "Race" && AgeStage == "AgeStage")
-                {
-                    ThingDef def = HSMCache.FARaceList.FirstOrDefault(x => x.defName == raceName);
-                    if (def.race != null)
-                    {
-                        bool ao = def.race.lifeStageAges.NullOrEmpty();
-                        AgeStage = ao ? s : def.race.lifeStageAges.FirstOrDefault().def.defName;
-                        if (!ao && showAge == null)
-                        {
-                            showAge = def.race.lifeStageAges.FirstOrDefault().minAge;
-                        }
-                        else if (ao)
-                        {
-                            showAge = null;
-                        }
-                    }
-
-                }
-                for (int x = 0; x < HSMCache.FARaceList.Count; x++)
-                {
-                    ThingDef a = HSMCache.FARaceList[x];
-                    if (a.defName != null && a.label != null)
-                    {
-                        float b = Text.CalcHeight(a.label, rect0.width - 4f);
-                        Rect loc0 = new Rect(rect0.x + 2f, rect0.y + 4f, rect0.width - 4f, b);
-                        if (LabelHeighLimit < HSMCache.FARaceList.Count)
-                        {
-                            LabelHeigh += b + 8f;
-                            LabelHeighLimit++;
-                        }
-                        rect0.height = b + 8f;
-                        if (Widgets.RadioButtonLabeled(loc0, a.label, raceName == a.defName))
-                        {
-                            raceName = a.defName;
-                            if (a.race != null)
-                            {
-                                bool ao = a.race.lifeStageAges.NullOrEmpty();
-                                AgeStage = ao ? s : a.race.lifeStageAges.FirstOrDefault().def.defName;
-                                if (!ao && showAge != a.race.lifeStageAges.FirstOrDefault().minAge)
-                                {
-                                    showAge = a.race.lifeStageAges.FirstOrDefault().minAge;
-                                }
-                                else if (ao)
-                                {
-                                    showAge = null;
-                                }
-                            }
-                            XenoMode = false;
-                        }
-                        if (Mouse.IsOver(loc0))
-                        {
-                            DrawHighlight(loc0);
-                        }
-                        rect0.y += b + 8f;
-                    }
-                }
+                isFliter = true;
+                GUI.DrawTexture(sl, TexButton.SearchButton);
             }
-            Widgets.EndScrollView();
-            if (raceName != "Race" && AgeStage != "AgeStage")
-            {
-                setting.InitializeData(raceName, AgeStage);
-            }
-            Rect AgeBar = new Rect(inRect.x + OutRect.width, inRect.y, inRect.width - OutRect.width - 5f, AgeBarHeigh);
-
-            if (raceName != "Race")
-            {
-                ThingDef a = DefDatabase<ThingDef>.GetNamedSilentFail(raceName);
-                if (!a.race.lifeStageAges.NullOrEmpty())
-                {
-                    List<LifeStageAge> list1 = a.race.lifeStageAges.GroupBy(aa => aa.def.defName).Select(ab => ab.FirstOrDefault()).ToList();
-                    if (!list1.NullOrEmpty())
-                    {
-                        List<TabRecord> list2 = new List<TabRecord>();
-                        float LabelWidth0 = AgeBar.width / list1.Count;
-                        for (int x = 0; x < list1.Count; x++)
-                        {
-                            LifeStageAge age = list1[x];
-                            float heigh = Text.CalcHeight(age.def.label, LabelWidth0 - 8f);
-                            list2.Add(new TabRecord(age.def.label, () =>
-                            {
-                                AgeStage = age.def.defName;
-                                XenoMode = false;
-                                showAge = age.minAge;
-                            }, AgeStage == age.def.defName));
-                            if (heigh + 8f > AgeBarHeigh)
-                            {
-                                AgeBarHeigh = heigh + 8f;
-                            }
-                        }
-                        string xa = a.race.lifeStageAges.FirstOrDefault(x => x.def.defName == AgeStage) != null ? a.race.lifeStageAges.FirstOrDefault(x => x.def.defName == AgeStage).def.label : "";
-                        GUI.Label(AgeBar.LeftPart(0.28f).RightPart(0.95f), xa + ": " + (showAge == null ? "" : showAge.ToStringSafe()) + "years_old".Translate());
-                        AgeBar.y += AgeBar.height;
-                        TabDrawer.DrawTabs(AgeBar.RightPart(0.70f), list2);
-                        AgeBar.y -= AgeBar.height;
-                    }
-                    else
-                    {
-                        float x = Text.CalcHeight(s.Translate(), AgeBar.width - 8f);
-                        AgeBarHeigh = x + 10f;
-                        Rect TextLoc = new Rect(AgeBar.x + 4f, AgeBar.y + 5f, AgeBar.width - 8f, x);
-                        GUI.Label(TextLoc, s.Translate(), TextStyle);
-
-                        if (AgeStage != s)
-                        {
-                            AgeStage = s;
-                            XenoMode = false;
-                        }
-                        if (showAge != null)
-                        {
-                            showAge = null;
-                        }
-                    }
-
-                }
-            }
-            Rect aaa1 = new Rect(AgeBar.x + 2f, AgeBar.y + AgeBar.height, AgeBar.width - 2f, OutRect.height - AgeBar.height);
-            DrawMenuSection(aaa1);
-            if (AgeStage != "AgeStage")
-            {
-                string key = raceName + AgeStage;
-                Listing_Standard ls = new Listing_Standard();
-                ls.Begin(aaa1);
-                Rect xx1 = ls.GetRect(20f);
-                Widgets.CheckboxLabeled(xx1.LeftPart(0.32f), "OffsetForFemale".Translate(), ref setting.data[key].OffsetForFemale);
-                Widgets.CheckboxLabeled(xx1.RightPart(0.66f).LeftHalf(), "OffsetForNone".Translate(), ref setting.data[key].OffsetForNone);
-                Widgets.CheckboxLabeled(xx1.RightPart(0.32f), "OffsetForMale".Translate(), ref setting.data[key].OffsetForMale);
-                Rect xx0 = ls.GetRect(20f);
-                Widgets.CheckboxLabeled(xx0.LeftPart(0.32f), "SizeForFemale".Translate(), ref setting.data[key].SizeForFemale);
-                Widgets.CheckboxLabeled(xx0.RightPart(0.66f).LeftHalf(), "SizeForNone".Translate(), ref setting.data[key].SizeForNone);
-                Widgets.CheckboxLabeled(xx0.RightPart(0.32f), "SizeForMale".Translate(), ref setting.data[key].SizeForMale);
-                Rect xx3 = ls.GetRect(20f);
-                Widgets.CheckboxLabeled(xx3.LeftPart(0.49f), "DefWriteMode".Translate(), ref setting.data[key].DefWriteMode);
-                if (Mouse.IsOver(xx3.LeftPart(0.49f)))
-                {
-                    TooltipHandler.TipRegion(xx3, "DefWriteMode_Tip".Translate());
-                }
-                if (ButtonText(xx3.RightPart(0.49f), "Xeno_Mode".Translate()))
-                {
-                    XenoMode = !XenoMode;
-                }
-                ls.GapLine(8f);
-                if (!XenoMode)
-                {
-                    ls.Label("East".Translate() + ":");
-                    ls.FloatAdjust("x:", ref setting.data[key].OffsetEast.x, 0.0001f, -2f, 2f, 4);
-                    ls.FloatAdjust("y:", ref setting.data[key].OffsetEast.y, 0.0001f, -2f, 2f, 4);
-                    ls.GapLine(8f);
-                    ls.Label("South".Translate() + ":");
-                    ls.FloatAdjust("x:", ref setting.data[key].OffsetSouth.x, 0.0001f, -2f, 2f, 4);
-                    ls.FloatAdjust("y:", ref setting.data[key].OffsetSouth.y, 0.0001f, -2f, 2f, 4);
-                    ls.GapLine(8f);
-                    ls.Label("West".Translate() + ":");
-                    ls.FloatAdjust("x:", ref setting.data[key].OffsetWest.x, 0.0001f, -2f, 2f, 4);
-                    ls.FloatAdjust("y:", ref setting.data[key].OffsetWest.y, 0.0001f, -2f, 2f, 4);
-                    ls.GapLine(8f);
-                    ls.Label("North".Translate() + ":");
-                    ls.FloatAdjust("x:", ref setting.data[key].OffsetNorth.x, 0.0001f, -2f, 2f, 4);
-                    ls.FloatAdjust("y:", ref setting.data[key].OffsetNorth.y, 0.0001f, -2f, 2f, 4);
-                    ls.GapLine(8f);
-                    ls.Label("Size".Translate() + ":");
-                    ls.FloatAdjust("heigh".Translate(), ref setting.data[key].Size.x, 0.01f, 0f, 2f, 2);
-                    ls.FloatAdjust("width".Translate(), ref setting.data[key].Size.y, 0.01f, 0f, 2f, 2);
-                    ls.GapLine(8f);
-                    ls.Gap(4f);
-                    Rect xx2 = ls.GetRect(24f);
-                    if (ButtonText(xx2.RightPart(0.33f), "Reset_This".Translate()))
-                    {
-                        setting.data.Remove(key);
-                    };
-                    if (ButtonText(xx2.LeftPart(0.66f).RightHalf(), "Reset_This_Race".Translate()))
-                    {
-                        List<string> list = setting.data.Keys.Where(key1 => key1.IndexOf(raceName) != -1).ToList();
-                        if (!list.NullOrEmpty())
-                        {
-                            for (int index = 0; index < list.Count; index++)
-                            {
-                                setting.data.Remove(list[index]);
-                            }
-                            HSMCache.LoadAll();
-                        }
-                        ResolveFaceGraphics(raceName, null);
-                    };
-                    if (ButtonText(xx2.LeftPart(0.32f), "Reset_All".Translate()))
-                    {
-                        setting.data.Clear();
-                        HSMCache.LoadAll();
-                        ResolveFaceGraphics(null, null);
-                    };
-                }
-                else
-                {
-                    List<XenotypeDef> xeno = DefDatabase<XenotypeDef>.AllDefs.Where(x => x.defName != null).ToList();
-                    if (!xeno.NullOrEmpty())
-                    {
-                        Rect xx4 = ls.GetRect(430f);
-                        Rect xx5 = new Rect(-5f, -5f, xx4.width - 30f, 30 * xeno.Count + 5f);
-                        Rect xx6 = new Rect(0, 0, xx5.width, 30f);
-                        BeginScrollView(xx4, ref po1, xx5, true);
-                        foreach (XenotypeDef def in xeno)
-                        {
-
-                            Label(new Rect(xx6.x + 30f, xx6.y + 5f, 100f, 20f), def.label);
-                            if (def.Icon != null)
-                            {
-                                GUI.DrawTexture(new Rect(xx6.x, xx6.y + 2f, 26f, 26f), def.Icon);
-                            }
-                            if (setting.data[key].NoFaXenos == null)
-                            {
-                                setting.data[key].NoFaXenos = new List<string>();
-                            }
-                            bool noDraw = !setting.data[key].NoFaXenos.NullOrEmpty() && setting.data[key].NoFaXenos.Contains(def.defName);
-                            bool draw = setting.data[key].NoFaXenos.NullOrEmpty() || !setting.data[key].NoFaXenos.Contains(def.defName);
-                            if (RadioButtonLabeled(xx6.RightHalf().RightPart(0.48f), "No_Draw_FAFace".Translate(), noDraw))
-                            {
-                                if (draw)
-                                {
-                                    setting.data[key].NoFaXenos.Add(def.defName);
-                                }
-                            }
-
-                            if (RadioButtonLabeled(xx6.RightHalf().LeftPart(0.48f), "Draw_FAFace".Translate(), draw))
-                            {
-                                if (noDraw)
-                                {
-                                    setting.data[key].NoFaXenos.Remove(def.defName);
-                                }
-                            }
-                            DrawLineHorizontal(xx6.x, xx6.y + xx6.height, xx6.width);
-                            xx6.y += 30f;
-                        }
-                        EndScrollView();
-                    }
-                }
-                ls.End();
-            }
-        }
-        public static void ResolveFaceGraphics(string raceName, string lifeStage)
-        {
-            if (Current.Game == null)
+            Rect rect1 = inRect.BottomPart(0.95f);
+            DrawWindowBackground(rect1);
+            Rect outRect = rect1.ContractedBy(5f);
+            if (HSMCache.FARaceList.NullOrEmpty())
             {
                 return;
             }
-            Map map = Current.Game.CurrentMap;
-            if (map == null)
+            if (settingsContent == null)
             {
-                return;
+                settingsContent = new List<ABEasyUtility.ScrollViewContent>();
             }
-            List<Pawn> pawns;
-            if (raceName != null)
+            for (int a = 0; a < HSMCache.FARaceList.Count; a++)
             {
-                pawns = map.mapPawns.AllPawns.
-                Where(x => x.def.defName == raceName && x.def.race != null
-                && (lifeStage == null || x.def.race.lifeStageAges.Any(a => a.def.defName == lifeStage))).ToList();
+                ThingDef race = HSMCache.FARaceList[a];
+                if (settingsContent.Count == 0 && !settingsContent.ContainsAny(b => b.Id == race.defName))
+                {
+                    settingsContent.Add(new SettingsUnit(outRect.width, outRect.height / 2f, outRect.height / 20f, race));
+                }
+            }
+            if (search.NullOrEmpty())
+            {
+                fliters = settingsContent;
             }
             else
+            if (settingsContent.Count != 0 && isFliter)
             {
-                pawns = map.mapPawns.AllPawns.
-                Where(x => !HSMCache.FARaceList.NullOrEmpty() && HSMCache.FARaceList.Contains(x.def)).ToList();
+                SettingsUnit.fliter = true;
+                fliters = settingsContent.Where(s => s.Id.IndexOf(search, StringComparison.CurrentCultureIgnoreCase) != -1).ToList();
+                SettingsUnit.fliter = false;
+                isFliter = false;
             }
-            if (pawns.NullOrEmpty())
+            if (fliters.Count != 0 && HSMSetting.datas != null)
             {
-                return;
+                ABEasyUtility.DrawScrollPanel(outRect, fliters, ref ScrollPosition0);
             }
-            foreach (Pawn pawn in pawns)
-            {
-                HSMSetting.HSMData data = HSMCache.GetHSMData(pawn);
-                if (data.NoFaXenos.NullOrEmpty() || !data.NoFaXenos.Contains(pawn.genes.Xenotype.defName))
-                {
-                    pawn.Drawer.renderer.graphics.ResolveAllGraphics();
-                }
-            }
+
         }
         public override string SettingsCategory()
         {
-            return this.Content.Name;
+            return Content.Name;
         }
     }
+    public class SettingsUnit : ABEasyUtility.ScrollViewContent
+    {
+        public static bool fliter = false;
+        private bool fold = true;
+        public string raceName;
+        private readonly ThingDef raceDef;
+        private float floatHight = 0;
+        private float unitHight;
+        public static readonly string noAge = "noAge";
+        private static Color WindowBGBorderColor = new ColorInt(97, 108, 122).ToColor;
+        private Dictionary<string, DrawDataSetting> ownDatas = new Dictionary<string, DrawDataSetting>();
+        public override string Id
+        {
+            get
+            {
+                if (fliter)
+                {
+                    return raceName;
+                }
+                else
+                {
+                    return base.Id;
+                }
+            }
+        }
+        public override float Height
+        {
+            get
+            {
+                if (fold)
+                {
+                    return unitHight;
+                }
+                else if (floatHight != 0)
+                {
+                    return floatHight;
+                }
+
+                else
+                {
+                    return base.Height;
+                }
+            }
+        }
+        public SettingsUnit(float width, float height, float foldHeight, ThingDef raceDef) : base(width, height, raceDef.defName)
+        {
+            this.raceDef = raceDef;
+            raceName = raceDef.label;
+            unitHight = foldHeight;
+        }
+
+        public override void DrawContect(Rect inRect)
+        {
+            Rect rect0 = new Rect(inRect.x, inRect.y, inRect.width, unitHight);
+            DrawBoxSolid(rect0, WindowBGBorderColor);
+            DrawBox(inRect);
+            GUI.Label(rect0, raceName + " defName[" + Id + "]", HSMCache.TextStyle);
+            GUI.DrawTexture(new Rect(rect0.x + rect0.width - unitHight, rect0.y, unitHight, unitHight), fold ? TexButton.ReorderDown : TexButton.ReorderUp);
+            float lh = 0;
+            if (ButtonInvisible(rect0))
+            {
+                fold = !fold;
+            }
+            if (fold)
+            {
+                return;
+            }
+            HSMSetting.CheckSettingData(raceDef);
+            DrawLineVertical(inRect.x + 5, inRect.y + rect0.height, inRect.height - rect0.height);
+            if (HSMSetting.datas.TryGetValue(Id, out Dictionary<string, HSMSetting.HSMData> ageDatas))
+            {
+                Rect rect1 = new Rect(inRect.x + 10f, inRect.y + unitHight + 5, inRect.width - 10, unitHight);
+                lh += rect0.height + 5f;
+                if (raceDef.race != null)
+                {
+                    if (ownDatas == null)
+                    {
+                        ownDatas = new Dictionary<string, DrawDataSetting>();
+                    }
+                    if (raceDef.race.lifeStageAges.NullOrEmpty())
+                    {
+                        if (ageDatas.TryGetValue(noAge, out HSMSetting.HSMData data))
+                        {
+                            DrawDataSetting draw;
+                            if (ownDatas.TryGetValue(noAge, out DrawDataSetting drawData))
+                            {
+                                draw = drawData;
+                            }
+                            else
+                            {
+                                draw = new DrawDataSetting();
+                                ownDatas.Add(noAge, draw);
+
+                            }
+                            rect1.height = draw.fold ? unitHight : 8 * unitHight + 35f;
+                            DrawBox(inRect);
+                            draw.DrawData(rect1, noAge, unitHight, ref data);
+                            lh += rect1.height + 5;
+                        }
+                        else
+                        {
+                            ageDatas.Add(noAge, new HSMSetting.HSMData());
+                        }
+                    }
+                    else
+                    {
+                        foreach (LifeStageAge stage in raceDef.race.lifeStageAges)
+                        {
+                            if (ageDatas.TryGetValue(stage.def.defName, out HSMSetting.HSMData data))
+                            {
+
+                                DrawDataSetting draw;
+                                if (ownDatas.TryGetValue(stage.def.defName, out DrawDataSetting drawData))
+                                {
+                                    draw = drawData;
+                                }
+                                else
+                                {
+                                    draw = new DrawDataSetting();
+                                    ownDatas.Add(stage.def.defName, draw);
+
+                                }
+                                rect1.height = draw.fold ? unitHight : 8 * unitHight + 35f;
+                                DrawBox(inRect);
+                                draw.DrawData(rect1, stage.def.label + " : " + stage.minAge + " " + "Years".Translate(), unitHight, ref data);
+                                rect1.y += rect1.height + 5f;
+                                lh += rect1.height + 5f;
+                            }
+                            else
+                            {
+                                ageDatas.Add(stage.def.defName, new HSMSetting.HSMData());
+                            }
+                        }
+                    }
+
+                }
+                floatHight = lh;
+            }
+            else
+            {
+                HSMSetting.datas.Add(Id, new Dictionary<string, HSMSetting.HSMData>());
+            }
+        }
+
+        internal class DrawDataSetting
+        {
+            public bool fold = true;
+
+            public void DrawData(Rect inRect, string label, float foldHeight, ref HSMSetting.HSMData data)
+            {
+                Rect rect0 = new Rect(inRect.x, inRect.y, inRect.width - 5f, foldHeight);
+                DrawBoxSolid(rect0, Color.gray);
+                Rect bl = new Rect(rect0.x + rect0.width - rect0.height - 5f, rect0.y, rect0.height, rect0.height);
+                GUI.DrawTexture(bl, fold ? TexButton.ReorderDown : TexButton.ReorderUp);
+                rect0.x += 5f;
+                Label(rect0, label);
+                rect0.x -= 5f;
+                if (ButtonInvisible(rect0))
+                {
+                    fold = !fold;
+                }
+                if (fold)
+                {
+                    return;
+                }
+                rect0.x += 5f;
+                rect0.width -= 5f;
+                rect0.y += rect0.height + 5f;
+                Rect lc = rect0.LeftPart(0.33f);
+                Rect mc = rect0.LeftPart(0.667f).RightPart(0.5f);
+                Rect rc = rect0.RightPart(0.33f);
+                CheckboxLabeled(lc, "OffsetForFemale".Translate(), ref data.OffsetForFemale);
+                lc.y += rect0.height + 5f;
+                CheckboxLabeled(lc, "SizeForFemale".Translate(), ref data.SizeForFemale);
+                lc.y += rect0.height + 5f;
+                CheckboxLabeled(mc, "OffsetForMale".Translate(), ref data.OffsetForMale);
+                mc.y += rect0.height + 5f;
+                CheckboxLabeled(mc, "SizeForMale".Translate(), ref data.SizeForMale);
+                CheckboxLabeled(rc, "OffsetForNone".Translate(), ref data.OffsetForNone);
+                rc.y += rect0.height + 5f;
+                CheckboxLabeled(rc, "SizeForNone".Translate(), ref data.SizeForNone);
+                rect0.y = lc.y;
+                rect0.height *= 5;
+                rect0.height += 20f;
+                Listing_Standard ls = new Listing_Standard();
+                ls.Begin(rect0.LeftPart(0.07f));
+                string o = " " + "Offset".Translate();
+                ls.Label("South".Translate() + o, foldHeight);
+                ls.GapLine(9f);
+                ls.Label("North".Translate() + o, foldHeight);
+                ls.GapLine(9f);
+                ls.Label("East".Translate() + o, foldHeight);
+                ls.GapLine(9f);
+                ls.Label("West".Translate() + o, foldHeight);
+                ls.GapLine(9f);
+                ls.Label("Size".Translate(), foldHeight);
+                ls.End();
+                ls.Begin(rect0.RightPart(0.92f).LeftPart(0.49f));
+                ls.FloatAdjust("x:" + data.OffsetSouth.x, ref data.OffsetSouth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.FloatAdjust("x:" + data.OffsetNorth.x, ref data.OffsetNorth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.FloatAdjust("x:" + data.OffsetEast.x, ref data.OffsetEast.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.FloatAdjust("x:" + data.OffsetWest.x, ref data.OffsetWest.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.FloatAdjust("heigh".Translate() + data.Size.x, ref data.Size.x, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.End();
+                ls.Begin(rect0.RightPart(0.92f).RightPart(0.49f));
+                ls.FloatAdjust("y:" + data.OffsetSouth.y, ref data.OffsetSouth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.FloatAdjust("y:" + data.OffsetNorth.y, ref data.OffsetNorth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.FloatAdjust("y:" + data.OffsetEast.y, ref data.OffsetEast.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.FloatAdjust("y:" + data.OffsetWest.y, ref data.OffsetWest.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.FloatAdjust("width".Translate() + data.Size.y, ref data.Size.y, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
+                ls.End();
+            }
+        }
 
 
+    }
 
     public class HSMSetting : ModSettings
     {
         public static bool FirstLoad = true;
-        public Dictionary<string, HSMData> data = new Dictionary<string, HSMData>();
+        public static Dictionary<string, Dictionary<string, HSMData>> datas = new Dictionary<string, Dictionary<string, HSMData>>();
         public override void ExposeData()
         {
-            Scribe_Collections.Look(ref data, "data", LookMode.Value, LookMode.Deep);
+            HSUtility.Look(ref datas, "datas");
             Scribe_Values.Look(ref FirstLoad, "FirstLoad", true);
         }
-        public void InitializeData(string raceName, string ageStage)
+        public void InitializeData()
         {
-            if (data == null)
+            if (!HSMCache.FARaceList.NullOrEmpty())
             {
-                data = new Dictionary<string, HSMData>();
-            }
-            string key = raceName + ageStage;
-            if (!data.ContainsKey(key) || data[key] == null)
-            {
-                HSMData data1 = new HSMData();
-                if (ageStage == "No_AgeStage")
+                for (int a = 0; a < HSMCache.FARaceList.Count; a++)
                 {
-                    data1 = GetAdjustDef(raceName, null);
+                    ThingDef race = HSMCache.FARaceList[a];
+                    CheckSettingData(race);
                 }
-                else
-                {
-                    LifeStageAge age = DefDatabase<ThingDef>.GetNamedSilentFail(raceName).race.lifeStageAges
-                        .Where(x => x.def.defName == ageStage).FirstOrDefault();
-                    data1 = GetAdjustDef(raceName, age.minAge);
-                }
-                data.SetOrAdd(key, data1);
             }
         }
-        public HSMData GetAdjustDef(string raceName, float? minAge)
-        {
-            FaceAdjustmentDef face = DefDatabase<FaceAdjustmentDef>.AllDefs.Where(cc => cc.RaceName == raceName).FirstOrDefault();
 
-            if (face == null)
+        public static void CheckSettingData(ThingDef raceDef)
+        {
+            if (datas == null)
             {
-                return new HSMData();
+                datas = new Dictionary<string, Dictionary<string, HSMData>>();
             }
-            else if (face.AgeBasedParams.NullOrEmpty())
+            bool reSet = false;
+            if (datas.Count == 0 || !datas.Keys.Contains(raceDef.defName))
             {
-                return new HSMData()
-                {
-                    OffsetEast = face.OffsetEast,
-                    OffsetSouth = face.OffsetSouth,
-                    OffsetWest = face.OffsetWest,
-                    OffsetNorth = face.OffsetNorth,
-                    Size = face.Size,
-                    DefaultOffsetEast = face.OffsetEast,
-                    DefaultOffsetSouth = face.OffsetSouth,
-                    DefaultOffsetWest = face.OffsetWest,
-                    DefaultOffsetNorth = face.OffsetNorth,
-                    DefaultSize = face.Size
-                };
+                reSet = true;
             }
-            else
+            else if (datas[raceDef.defName] == null || datas[raceDef.defName].Any(k => k.Value == null))
             {
-                FaceAdjustmentDef.AgeBasedParam ageBased = face.AgeBasedParams.Where(x => x.Age == minAge).FirstOrDefault();
-                if (ageBased == null)
+                reSet = true;
+            }
+            if (reSet)
+            {
+
+                FaceAdjustmentDef adjustDef = DefDatabase<FaceAdjustmentDef>.AllDefs.Where(a => a.RaceName == raceDef.defName).FirstOrDefault();
+                if (raceDef.race != null)
                 {
-                    return new HSMData()
+                    if (raceDef.race.lifeStageAges.NullOrEmpty())
                     {
-                        HasFADef = true,
-                        OffsetEast = face.OffsetEast,
-                        OffsetSouth = face.OffsetSouth,
-                        OffsetWest = face.OffsetWest,
-                        OffsetNorth = face.OffsetNorth,
-                        Size = face.Size,
-                        DefaultOffsetEast = face.OffsetEast,
-                        DefaultOffsetSouth = face.OffsetSouth,
-                        DefaultOffsetWest = face.OffsetWest,
-                        DefaultOffsetNorth = face.OffsetNorth,
-                        DefaultSize = face.Size
-                    };
-                }
-                else
-                {
-                    return new HSMData()
+                        HSMData data = new HSMData();
+                        if (adjustDef != null)
+                        {
+                            data.Size = adjustDef.Size;
+                            data.OffsetSouth = adjustDef.OffsetSouth;
+                            data.OffsetWest = adjustDef.OffsetWest;
+                            data.OffsetEast = adjustDef.OffsetEast;
+                            data.OffsetNorth = adjustDef.OffsetNorth;
+                            data.adjustmentDef = adjustDef.defName;
+                        }
+                        datas.SetOrAdd(raceDef.defName, new Dictionary<string, HSMData>() { { "Normal", data } });
+                    }
+                    else
                     {
-                        HasFADef = true,
-                        OffsetEast = ageBased.OffsetEast,
-                        OffsetSouth = ageBased.OffsetSouth,
-                        OffsetWest = ageBased.OffsetWest,
-                        OffsetNorth = ageBased.OffsetNorth,
-                        DefaultOffsetEast = ageBased.OffsetEast,
-                        DefaultOffsetSouth = ageBased.OffsetSouth,
-                        DefaultOffsetWest = ageBased.OffsetWest,
-                        DefaultOffsetNorth = ageBased.OffsetNorth,
-                        Size = ageBased.Size,
-                        DefaultSize = ageBased.Size
-                    };
+                        Dictionary<string, HSMData> keyValuePairs = new Dictionary<string, HSMData>();
+                        for (int i = 0; i < raceDef.race.lifeStageAges.Count; i++)
+                        {
+                            LifeStageAge age = raceDef.race.lifeStageAges[i];
+                            HSMData data = new HSMData();
+                            if (adjustDef != null)
+                            {
+                                FaceAdjustmentDef.AgeBasedParam ageBased = adjustDef.AgeBasedParams.Where(o => o.Age.Equals(age.minAge)).FirstOrDefault();
+                                if (ageBased == null)
+                                {
+                                    data.Size = adjustDef.Size;
+                                    data.OffsetSouth = adjustDef.OffsetSouth;
+                                    data.OffsetWest = adjustDef.OffsetWest;
+                                    data.OffsetEast = adjustDef.OffsetEast;
+                                    data.OffsetNorth = adjustDef.OffsetNorth;
+                                    data.adjustmentDef = adjustDef.defName;
+                                }
+                                else
+                                {
+                                    data.Size = ageBased.Size;
+                                    data.OffsetSouth = ageBased.OffsetSouth;
+                                    data.OffsetWest = ageBased.OffsetWest;
+                                    data.OffsetEast = ageBased.OffsetEast;
+                                    data.OffsetNorth = ageBased.OffsetNorth;
+                                    data.adjustmentDef = adjustDef.defName;
+                                }
+                            }
+                            keyValuePairs.SetOrAdd(age.def.defName, data);
+                        }
+                        datas.SetOrAdd(raceDef.defName, keyValuePairs);
+                    }
                 }
             }
         }
+
         public class HSMData : IExposable
         {
             public Vector2 Size = new Vector2(1.5f, 1.5f);
@@ -447,11 +398,7 @@ namespace HeadSetForFA
             public Vector2 OffsetSouth = Vector2.zero;
             public Vector2 OffsetEast = Vector2.zero;
             public Vector2 OffsetWest = Vector2.zero;
-            public Vector2 DefaultSize = new Vector2(1.5f, 1.5f);
-            public Vector2 DefaultOffsetNorth = Vector2.zero;
-            public Vector2 DefaultOffsetSouth = Vector2.zero;
-            public Vector2 DefaultOffsetEast = Vector2.zero;
-            public Vector2 DefaultOffsetWest = Vector2.zero;
+            public string adjustmentDef = null;
             public bool DefWriteMode = false;
             public bool OffsetForFemale = true;
             public bool OffsetForMale = true;
@@ -463,16 +410,12 @@ namespace HeadSetForFA
             public bool HasFADef = false;
             public void ExposeData()
             {
-                HelperMethod.Look(ref Size, "Size", 2);
-                HelperMethod.Look(ref OffsetEast, "OffsetEast", 4);
-                HelperMethod.Look(ref OffsetSouth, "OffsetSouth", 4);
-                HelperMethod.Look(ref OffsetNorth, "OffsetNorth", 4);
-                HelperMethod.Look(ref OffsetWest, "OffsetWest", 4);
-                HelperMethod.Look(ref DefaultSize, "DefaultSize", 2);
-                HelperMethod.Look(ref DefaultOffsetEast, "DefaultOffsetEast", 4);
-                HelperMethod.Look(ref DefaultOffsetSouth, "DefaultOffsetSouth", 4);
-                HelperMethod.Look(ref DefaultOffsetNorth, "DefaultOffsetNorth", 4);
-                HelperMethod.Look(ref DefaultOffsetWest, "DefaultOffsetWest", 4);
+                HSUtility.Look(ref Size, "Size", 2);
+                HSUtility.Look(ref OffsetEast, "OffsetEast", 4);
+                HSUtility.Look(ref OffsetSouth, "OffsetSouth", 4);
+                HSUtility.Look(ref OffsetNorth, "OffsetNorth", 4);
+                HSUtility.Look(ref OffsetWest, "OffsetWest", 4);
+                Scribe_Values.Look(ref adjustmentDef, "adjustmentDef");
                 Scribe_Values.Look(ref OffsetForFemale, "OffsetForFemale", true);
                 Scribe_Values.Look(ref OffsetForMale, "OffsetForMale", true);
                 Scribe_Values.Look(ref OffsetForNone, "OffsetForNone", true);
@@ -489,77 +432,39 @@ namespace HeadSetForFA
     public static class HSMCache
     {
         public static List<ThingDef> FARaceList = new List<ThingDef>();
+        public static GUIStyle TextStyle;
+        internal static readonly Texture2D questionMark = ContentFinder<Texture2D>.Get("UI/Overlays/QuestionMark", true);
         static HSMCache()
         {
+
             FARaceList = DefDatabase<ThingDef>.AllDefs
                 .Where(x => x.category.ToString() == "Pawn" && x.HasComp(typeof(FacialAnimation.HeadControllerComp)) && x.defName != null && x.race != null).ToList();
             if (HSMSetting.FirstLoad)
             {
                 HSMSetting.FirstLoad = false;
-                if (!HeadSetMod.setting.data.NullOrEmpty())
+                if (!HSMSetting.datas.NullOrEmpty())
                 {
-                    HeadSetMod.setting.data.Clear();
+                    HSMSetting.datas.Clear();
                 }
             }
-            LoadAll();
-            HeadSetMod.setting.Write();
+            try
+            {
+                HeadSetMod.setting.ExposeData();
+            }
+            finally
+            {
+                HeadSetMod.setting.InitializeData();
+                HeadSetMod.setting.Write();
+            }
+            CreateTextStyle();
         }
-        public static void LoadAll()
+        internal static void CreateTextStyle()
         {
-            if (FARaceList.NullOrEmpty())
+            if (TextStyle == null)
             {
-                return;
+                TextStyle = new GUIStyle(Text.CurTextAreaReadOnlyStyle);
+                TextStyle.alignment = TextAnchor.MiddleCenter;
             }
-            foreach (ThingDef def in FARaceList)
-            {
-
-                if (def.race.lifeStageAges.NullOrEmpty())
-                {
-                    HeadSetMod.setting.InitializeData(def.defName, "No_AgeStage");
-                    HSMSetting.HSMData data = HeadSetMod.setting.GetAdjustDef(def.defName, null);
-                    HeadSetMod.setting.data[def.defName + "No_AgeStage"].HasFADef = data.HasFADef;
-                    HeadSetMod.setting.data[def.defName + "No_AgeStage"].DefaultOffsetEast = data.DefaultOffsetEast;
-                    HeadSetMod.setting.data[def.defName + "No_AgeStage"].DefaultOffsetWest = data.DefaultOffsetWest;
-                    HeadSetMod.setting.data[def.defName + "No_AgeStage"].DefaultOffsetNorth = data.DefaultOffsetNorth;
-                    HeadSetMod.setting.data[def.defName + "No_AgeStage"].DefaultOffsetSouth = data.DefaultOffsetSouth;
-                    HeadSetMod.setting.data[def.defName + "No_AgeStage"].DefaultSize = data.DefaultSize;
-                }
-                else
-                {
-                    List<LifeStageAge> ages = def.race.lifeStageAges.GroupBy(aa => aa.def.defName).Select(ab => ab.FirstOrDefault()).ToList();
-                    foreach (LifeStageAge age in ages)
-                    {
-                        HeadSetMod.setting.InitializeData(def.defName, age.def.defName);
-                        HSMSetting.HSMData data = HeadSetMod.setting.GetAdjustDef(def.defName, age.minAge);
-                        HeadSetMod.setting.data[def.defName + age.def.defName].HasFADef = data.HasFADef;
-                        HeadSetMod.setting.data[def.defName + age.def.defName].DefaultOffsetEast = data.DefaultOffsetEast;
-                        HeadSetMod.setting.data[def.defName + age.def.defName].DefaultOffsetWest = data.DefaultOffsetWest;
-                        HeadSetMod.setting.data[def.defName + age.def.defName].DefaultOffsetNorth = data.DefaultOffsetNorth;
-                        HeadSetMod.setting.data[def.defName + age.def.defName].DefaultOffsetSouth = data.DefaultOffsetSouth;
-                        HeadSetMod.setting.data[def.defName + age.def.defName].DefaultSize = data.DefaultSize;
-                    }
-                }
-            }
-        }
-        public static HSMSetting.HSMData GetHSMData(Pawn pawn)
-        {
-            string race;
-            string age;
-
-            if (pawn.ageTracker.CurLifeStage != null)
-            {
-                race = pawn.def.defName; age = pawn.ageTracker.CurLifeStage.defName;
-            }
-            else
-            {
-                race = pawn.def.defName; age = "No_AgeStage";
-            }
-            string x = race + age;
-            if (!HeadSetMod.setting.data.ContainsKey(x))
-            {
-                HeadSetMod.setting.InitializeData(race, age);
-            }
-            return HeadSetMod.setting.data[x];
         }
     }
 }
