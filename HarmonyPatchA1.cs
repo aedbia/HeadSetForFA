@@ -1,5 +1,6 @@
 ﻿using FacialAnimation;
 using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -24,9 +25,9 @@ namespace HeadSetForFA
                     harmony.Patch(method0, transpiler: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Transpiler_OffsetFor))));
                 }
             }
-            finally
+            catch (Exception e)
             {
-                Log.Message("HeadSetForFA OffsetFix Harmony Patching Finished");
+                Log.Message("HeadSetForFA OffsetFix Harmony Patching failed");
             }
             try
             {
@@ -36,9 +37,141 @@ namespace HeadSetForFA
                     harmony.Patch(method0, postfix: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Postfix_TryGetMatrix))));
                 }
             }
-            finally
+            catch (Exception e)
             {
-                Log.Message("HeadSetForFA ScaleFix Harmony Patching Finished");
+                Log.Message("HeadSetForFA ScaleFix Harmony Patching failed");
+            }
+            try
+            {
+                MethodInfo method0 = AccessTools.Method(typeof(GraphicHelper), nameof(GraphicHelper.GetHeadOffset));
+                if (method0 != null)
+                {
+                    harmony.Patch(method0, prefix: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Prefix_GetHeadOffset))));
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("HeadSetForFA SettingPatchOffset Harmony Patching failed");
+            }
+            try
+            {
+                MethodInfo method0 = AccessTools.Method(typeof(GraphicHelper), nameof(GraphicHelper.GetHeadMeshSet));
+                if (method0 != null)
+                {
+                    harmony.Patch(method0, prefix: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Prefix_GetHeadMeshSet))));
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("HeadSetForFA SettingPatchScale Harmony Patching failed");
+            }
+            /*try
+            {
+                Type type = AccessTools.TypeByName("FacialAnimation.HarmonyPatches");
+                if (type != null)
+                {
+                    MethodInfo method0 = AccessTools.Method(type, "PostfixGetHumanlikeHairSetForPawn");
+                    if (method0 != null)
+                    {
+                        harmony.Patch(method0, postfix: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Postfix_ShouldDrawPawn))));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("HeadSetForFA SettingPatchScale Harmony Patching failed");
+            }*/
+        }
+
+        /*public static void Postfix_ShouldDrawPawn(ref GraphicMeshSet __result)
+        {
+            /*if (pawn.Drawer != null&&pawn.GetComp<HeadControllerComp>()!= null)
+            {
+                pawn.Drawer.renderer.SetAllGraphicsDirty();
+                if (pawn.IsColonist)
+                {
+                    PortraitsCache.SetDirty(pawn);
+                }
+            }
+            Log.Warning("____");
+            Log.Warning(__result.MeshAt(Rot4.South).vertices.ToStringSafeEnumerable());
+            Log.Warning("----");
+        }*/
+        
+        public static bool Prefix_GetHeadMeshSet(Pawn pawn, ref Vector2 __result)
+        {
+            Vector2 vector2;
+            HSMSetting.HSMData ageData = GetData(pawn);
+            if (ageData == null)
+            {
+                return true;
+            }
+            vector2 = ageData.Size;
+            __result = pawn.story.headType.narrow ? new Vector2((float)(vector2.x / 1.086995905648755), vector2.y) : vector2;
+            return false;
+        }
+
+        public static bool Prefix_GetHeadOffset(Pawn pawn, ref List<Vector3> __result)
+        {
+            HSMSetting.HSMData ageData = GetData(pawn);
+            if (ageData == null)
+            {
+                return true;
+            }
+            List<Vector3> faceSet = new List<Vector3>
+                    {
+                        Vector3.zero,
+                        Vector3.zero,
+                        Vector3.zero,
+                        Vector3.zero
+                    };
+            faceSet[Rot4.North.AsInt] = new Vector3(ageData.OffsetNorth.x, 0, ageData.OffsetNorth.y);
+            faceSet[Rot4.South.AsInt] = new Vector3(ageData.OffsetSouth.x, 0, ageData.OffsetSouth.y);
+            faceSet[Rot4.East.AsInt] = new Vector3(ageData.OffsetEast.x, 0, ageData.OffsetEast.y);
+            faceSet[Rot4.West.AsInt] = new Vector3(ageData.OffsetWest.x, 0, ageData.OffsetWest.y);
+            __result = faceSet;
+            return false;
+        }
+
+
+        private static HSMSetting.HSMData GetData(Pawn pawn)
+        {
+            if (pawn == null)
+            {
+                return null;
+            }
+            if (HSMSetting.datas.TryGetValue(pawn.def.defName, out Dictionary<string, HSMSetting.HSMData> data))
+            {
+                if (pawn.def.race == null)
+                {
+                    return null;
+                }
+                if (pawn.def.race.lifeStageAges.NullOrEmpty())
+                {
+                    if (data.TryGetValue(SettingsUnit.noAge, out HSMSetting.HSMData ageData))
+                    {
+                        return ageData;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+                else
+                {
+                    if (data.TryGetValue(pawn.ageTracker.CurLifeStage.defName, out HSMSetting.HSMData ageData))
+                    {
+                        return ageData;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+            }
+            else
+            {
+                return null;
             }
         }
 
@@ -46,7 +179,6 @@ namespace HeadSetForFA
         {
             if (node.Props.workerClass == typeof(PawnRenderNodeWorker_Apparel_Head) && node.children.NullOrEmpty())
             {
-                node.Props.Worker.LayerFor();
                 if (FacialAnimationMod.Settings.IgnoreHairMeshParams)
                 {
                     Vector3 offset = GraphicHelper.GetHeadOffset(parms.pawn)[parms.facing.AsInt];
@@ -54,7 +186,7 @@ namespace HeadSetForFA
                     {
                         matrix *= Matrix4x4.Translate(offset);
                     }
-                    Vector2 FAScale = GraphicHelper.GetHeadMeshSet(parms.pawn)/1.5f;
+                    Vector2 FAScale = GraphicHelper.GetHeadMeshSet(parms.pawn) / 1.5f;
                     if (FAScale != Vector2.one)
                     {
                         matrix *= Matrix4x4.Scale(new Vector3(FAScale.x, 1f, FAScale.y));

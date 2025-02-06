@@ -25,9 +25,49 @@ namespace HeadSetForFA
 
         public override void WriteSettings()
         {
-
+            try
+            {
+                ResolveFaceGraphics();
+            }
+            catch (Exception ingore) { }
             base.WriteSettings();
         }
+
+        public static void ResolveFaceGraphics()
+        {
+            if (Current.Game == null)
+            {
+                return;
+            }
+            Map map = Current.Game.CurrentMap;
+            if (map == null)
+            {
+                return;
+            }
+            List<Pawn> pawns;
+            if (HSMCache.FARaceList != null)
+            {
+                pawns = map.mapPawns.AllPawns.
+                Where(x => HSMCache.FARaceList.Contains(x.def) && x.def.race != null).ToList();
+            }
+            else
+            {
+                pawns = new List<Pawn>();
+            }
+            if (pawns.NullOrEmpty())
+            {
+                return;
+            }
+            foreach (Pawn pawn in pawns)
+            {
+                pawn.Drawer.renderer.SetAllGraphicsDirty();
+                if (pawn.IsColonist)
+                {
+                    PortraitsCache.SetDirty(pawn);
+                }
+            }
+        }
+
         public override void DoSettingsWindowContents(Rect inRect)
         {
             Rect rect0 = inRect.TopPart(0.04f);
@@ -76,6 +116,7 @@ namespace HeadSetForFA
             }
 
         }
+
         public override string SettingsCategory()
         {
             return Content.Name;
@@ -191,7 +232,6 @@ namespace HeadSetForFA
                         {
                             if (ageDatas.TryGetValue(stage.def.defName, out HSMSetting.HSMData data))
                             {
-
                                 DrawDataSetting draw;
                                 if (ownDatas.TryGetValue(stage.def.defName, out DrawDataSetting drawData))
                                 {
@@ -350,9 +390,8 @@ namespace HeadSetForFA
                             data.OffsetWest = adjustDef.OffsetWest;
                             data.OffsetEast = adjustDef.OffsetEast;
                             data.OffsetNorth = adjustDef.OffsetNorth;
-                            data.adjustmentDef = adjustDef.defName;
                         }
-                        datas.SetOrAdd(raceDef.defName, new Dictionary<string, HSMData>() { { "Normal", data } });
+                        datas.SetOrAdd(raceDef.defName, new Dictionary<string, HSMData>() { { SettingsUnit.noAge, data } });
                     }
                     else
                     {
@@ -363,15 +402,21 @@ namespace HeadSetForFA
                             HSMData data = new HSMData();
                             if (adjustDef != null)
                             {
-                                FaceAdjustmentDef.AgeBasedParam ageBased = adjustDef.AgeBasedParams.Where(o => o.Age.Equals(age.minAge)).FirstOrDefault();
+                                FaceAdjustmentDef.AgeBasedParam ageBased = null;
+                                for (int j = 0; j < adjustDef.AgeBasedParams.Count; j++)
+                                    if (adjustDef.AgeBasedParams[j].Age == age.minAge)
+                                    {
+                                        ageBased = adjustDef.AgeBasedParams[j];
+                                    }
+
                                 if (ageBased == null)
                                 {
+                                    //Log.Warning("No AgeBasedParam for " + raceDef.defName + " " + age.minAge);
                                     data.Size = adjustDef.Size;
                                     data.OffsetSouth = adjustDef.OffsetSouth;
                                     data.OffsetWest = adjustDef.OffsetWest;
                                     data.OffsetEast = adjustDef.OffsetEast;
                                     data.OffsetNorth = adjustDef.OffsetNorth;
-                                    data.adjustmentDef = adjustDef.defName;
                                 }
                                 else
                                 {
@@ -380,7 +425,6 @@ namespace HeadSetForFA
                                     data.OffsetWest = ageBased.OffsetWest;
                                     data.OffsetEast = ageBased.OffsetEast;
                                     data.OffsetNorth = ageBased.OffsetNorth;
-                                    data.adjustmentDef = adjustDef.defName;
                                 }
                             }
                             keyValuePairs.SetOrAdd(age.def.defName, data);
@@ -398,7 +442,6 @@ namespace HeadSetForFA
             public Vector2 OffsetSouth = Vector2.zero;
             public Vector2 OffsetEast = Vector2.zero;
             public Vector2 OffsetWest = Vector2.zero;
-            public string adjustmentDef = null;
             public bool DefWriteMode = false;
             public bool OffsetForFemale = true;
             public bool OffsetForMale = true;
@@ -415,7 +458,6 @@ namespace HeadSetForFA
                 HSUtility.Look(ref OffsetSouth, "OffsetSouth", 4);
                 HSUtility.Look(ref OffsetNorth, "OffsetNorth", 4);
                 HSUtility.Look(ref OffsetWest, "OffsetWest", 4);
-                Scribe_Values.Look(ref adjustmentDef, "adjustmentDef");
                 Scribe_Values.Look(ref OffsetForFemale, "OffsetForFemale", true);
                 Scribe_Values.Look(ref OffsetForMale, "OffsetForMale", true);
                 Scribe_Values.Look(ref OffsetForNone, "OffsetForNone", true);
