@@ -65,39 +65,36 @@ namespace HeadSetForFA
             {
                 Log.Message("HeadSetForFA SettingPatchScale Harmony Patching failed");
             }
-            /*try
+            try
             {
-                Type type = AccessTools.TypeByName("FacialAnimation.HarmonyPatches");
+                Type type = AccessTools.TypeByName("FacialAnimation.DrawFaceGraphicsComp");
                 if (type != null)
                 {
-                    MethodInfo method0 = AccessTools.Method(type, "PostfixGetHumanlikeHairSetForPawn");
+                    MethodInfo method0 = AccessTools.Method(type, "CheckEnableDrawing");
                     if (method0 != null)
                     {
-                        harmony.Patch(method0, postfix: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Postfix_ShouldDrawPawn))));
+                        harmony.Patch(method0, postfix: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Postfix_CheckEnableDrawing))));
                     }
                 }
             }
             catch (Exception e)
             {
-                Log.Message("HeadSetForFA SettingPatchScale Harmony Patching failed");
-            }*/
+                Log.Message("HeadSetForFA SettingPatchDraw Harmony Patching failed");
+            }
         }
 
-        /*public static void Postfix_ShouldDrawPawn(ref GraphicMeshSet __result)
+        public static void Postfix_CheckEnableDrawing(Pawn pawn,ref bool __result)
         {
-            /*if (pawn.Drawer != null&&pawn.GetComp<HeadControllerComp>()!= null)
+            if (pawn == null)
             {
-                pawn.Drawer.renderer.SetAllGraphicsDirty();
-                if (pawn.IsColonist)
-                {
-                    PortraitsCache.SetDirty(pawn);
-                }
+                return;
             }
-            Log.Warning("____");
-            Log.Warning(__result.MeshAt(Rot4.South).vertices.ToStringSafeEnumerable());
-            Log.Warning("----");
-        }*/
-        
+            if (__result)
+            {
+                __result = GetData(pawn).CanDrawFA(pawn);
+            }
+        }
+
         public static bool Prefix_GetHeadMeshSet(Pawn pawn, ref Vector2 __result)
         {
             Vector2 vector2;
@@ -106,7 +103,14 @@ namespace HeadSetForFA
             {
                 return true;
             }
-            vector2 = ageData.Size;
+            if (!ageData.CanDrawFA(pawn, true, false))
+            {
+                vector2 = new Vector2(1.5f,1.5f);
+            }
+            else
+            {
+                vector2 = ageData.Size;
+            }
             __result = pawn.story.headType.narrow ? new Vector2((float)(vector2.x / 1.086995905648755), vector2.y) : vector2;
             return false;
         }
@@ -114,7 +118,7 @@ namespace HeadSetForFA
         public static bool Prefix_GetHeadOffset(Pawn pawn, ref List<Vector3> __result)
         {
             HSMSetting.HSMData ageData = GetData(pawn);
-            if (ageData == null)
+            if (ageData == null || ageData.CanDrawFA(pawn, true))
             {
                 return true;
             }
@@ -125,15 +129,16 @@ namespace HeadSetForFA
                         Vector3.zero,
                         Vector3.zero
                     };
-            faceSet[Rot4.North.AsInt] = new Vector3(ageData.OffsetNorth.x, 0, ageData.OffsetNorth.y);
-            faceSet[Rot4.South.AsInt] = new Vector3(ageData.OffsetSouth.x, 0, ageData.OffsetSouth.y);
-            faceSet[Rot4.East.AsInt] = new Vector3(ageData.OffsetEast.x, 0, ageData.OffsetEast.y);
-            faceSet[Rot4.West.AsInt] = new Vector3(ageData.OffsetWest.x, 0, ageData.OffsetWest.y);
+            if (ageData.CanDrawFA(pawn, true))
+            {
+                faceSet[Rot4.North.AsInt] = new Vector3(ageData.OffsetNorth.x, 0, ageData.OffsetNorth.y);
+                faceSet[Rot4.South.AsInt] = new Vector3(ageData.OffsetSouth.x, 0, ageData.OffsetSouth.y);
+                faceSet[Rot4.East.AsInt] = new Vector3(ageData.OffsetEast.x, 0, ageData.OffsetEast.y);
+                faceSet[Rot4.West.AsInt] = new Vector3(ageData.OffsetWest.x, 0, ageData.OffsetWest.y);
+            }
             __result = faceSet;
             return false;
         }
-
-
         private static HSMSetting.HSMData GetData(Pawn pawn)
         {
             if (pawn == null)
@@ -238,8 +243,6 @@ namespace HeadSetForFA
                 return offset;
             }
         }
-
-
 
         /*public static IEnumerable<CodeInstruction> TranPrefixRenderPawnInternal(IEnumerable<CodeInstruction> codeInstructions, ILGenerator generator)
         {

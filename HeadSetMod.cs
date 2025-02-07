@@ -189,11 +189,17 @@ namespace HeadSetForFA
             {
                 return;
             }
+            Rect rect1 = new Rect(inRect.x + 10f, inRect.y + unitHight + 5, inRect.width - 10, unitHight);
+            lh += rect0.height + 5f;
+            if (ButtonText(rect1, "reset".Translate()))
+            {
+                HSMSetting.datas.Remove(raceDef.defName);
+            }
             HSMSetting.CheckSettingData(raceDef);
             DrawLineVertical(inRect.x + 5, inRect.y + rect0.height, inRect.height - rect0.height);
             if (HSMSetting.datas.TryGetValue(Id, out Dictionary<string, HSMSetting.HSMData> ageDatas))
             {
-                Rect rect1 = new Rect(inRect.x + 10f, inRect.y + unitHight + 5, inRect.width - 10, unitHight);
+                rect1.y += rect1.height + 5f;
                 lh += rect0.height + 5f;
                 if (raceDef.race != null)
                 {
@@ -243,9 +249,9 @@ namespace HeadSetForFA
                                     ownDatas.Add(stage.def.defName, draw);
 
                                 }
-                                rect1.height = draw.fold ? unitHight : 8 * unitHight + 35f;
+                                rect1.height = draw.fold ? unitHight : 9 * unitHight + 40f;
                                 DrawBox(inRect);
-                                draw.DrawData(rect1, stage.def.label + " : " + stage.minAge + " " + "Years".Translate(), unitHight, ref data);
+                                draw.DrawData(rect1, stage.def.label + " : " + stage.minAge + " " + "years_old".Translate(), unitHight, ref data);
                                 rect1.y += rect1.height + 5f;
                                 lh += rect1.height + 5f;
                             }
@@ -292,29 +298,34 @@ namespace HeadSetForFA
                 Rect lc = rect0.LeftPart(0.33f);
                 Rect mc = rect0.LeftPart(0.667f).RightPart(0.5f);
                 Rect rc = rect0.RightPart(0.33f);
-                CheckboxLabeled(lc, "OffsetForFemale".Translate(), ref data.OffsetForFemale);
+                CheckboxLabeled(lc, "EnableFAForFemale".Translate(), ref data.EnableForFemale);
                 lc.y += rect0.height + 5f;
-                CheckboxLabeled(lc, "SizeForFemale".Translate(), ref data.SizeForFemale);
+                CheckboxLabeled(lc, "OffsetForFemale".Translate(), ref data.OffsetForFemale,!data.EnableForFemale);
                 lc.y += rect0.height + 5f;
-                CheckboxLabeled(mc, "OffsetForMale".Translate(), ref data.OffsetForMale);
+                CheckboxLabeled(lc, "SizeForFemale".Translate(), ref data.SizeForFemale, !data.EnableForFemale);
+                lc.y += rect0.height + 5f;
+                CheckboxLabeled(mc, "EnableFAForMale".Translate(), ref data.EnableForMale);
                 mc.y += rect0.height + 5f;
-                CheckboxLabeled(mc, "SizeForMale".Translate(), ref data.SizeForMale);
-                CheckboxLabeled(rc, "OffsetForNone".Translate(), ref data.OffsetForNone);
+                CheckboxLabeled(mc, "OffsetForMale".Translate(), ref data.OffsetForMale,!data.EnableForMale);
+                mc.y += rect0.height + 5f;
+                CheckboxLabeled(mc, "SizeForMale".Translate(), ref data.SizeForMale,!data.EnableForMale);
+                CheckboxLabeled(rc, "EnableFAForNone".Translate(), ref data.EnableForNone);
                 rc.y += rect0.height + 5f;
-                CheckboxLabeled(rc, "SizeForNone".Translate(), ref data.SizeForNone);
+                CheckboxLabeled(rc, "OffsetForNone".Translate(), ref data.OffsetForNone, !data.EnableForNone);
+                rc.y += rect0.height + 5f;
+                CheckboxLabeled(rc, "SizeForNone".Translate(), ref data.SizeForNone, !data.EnableForNone);
                 rect0.y = lc.y;
                 rect0.height *= 5;
                 rect0.height += 20f;
                 Listing_Standard ls = new Listing_Standard();
                 ls.Begin(rect0.LeftPart(0.07f));
-                string o = " " + "Offset".Translate();
-                ls.Label("South".Translate() + o, foldHeight);
+                ls.Label("South".Translate(), foldHeight);
                 ls.GapLine(9f);
-                ls.Label("North".Translate() + o, foldHeight);
+                ls.Label("North".Translate(), foldHeight);
                 ls.GapLine(9f);
-                ls.Label("East".Translate() + o, foldHeight);
+                ls.Label("East".Translate(), foldHeight);
                 ls.GapLine(9f);
-                ls.Label("West".Translate() + o, foldHeight);
+                ls.Label("West".Translate(), foldHeight);
                 ls.GapLine(9f);
                 ls.Label("Size".Translate(), foldHeight);
                 ls.End();
@@ -443,10 +454,13 @@ namespace HeadSetForFA
             public Vector2 OffsetEast = Vector2.zero;
             public Vector2 OffsetWest = Vector2.zero;
             public bool DefWriteMode = false;
+            public bool EnableForFemale = true;
             public bool OffsetForFemale = true;
+            public bool EnableForMale = true;
             public bool OffsetForMale = true;
             public bool SizeForFemale = true;
             public bool SizeForMale = true;
+            public bool EnableForNone = true;
             public bool OffsetForNone = true;
             public bool SizeForNone = true;
             public List<string> NoFaXenos = new List<string>();
@@ -458,8 +472,11 @@ namespace HeadSetForFA
                 HSUtility.Look(ref OffsetSouth, "OffsetSouth", 4);
                 HSUtility.Look(ref OffsetNorth, "OffsetNorth", 4);
                 HSUtility.Look(ref OffsetWest, "OffsetWest", 4);
+                Scribe_Values.Look(ref EnableForFemale, "EnableFAForFemale", true);
                 Scribe_Values.Look(ref OffsetForFemale, "OffsetForFemale", true);
+                Scribe_Values.Look(ref EnableForMale, "EnableFAForMale", true);
                 Scribe_Values.Look(ref OffsetForMale, "OffsetForMale", true);
+                Scribe_Values.Look(ref EnableForNone, "EnableFAForNone", true);
                 Scribe_Values.Look(ref OffsetForNone, "OffsetForNone", true);
                 Scribe_Values.Look(ref SizeForFemale, "SizeForFemale", true);
                 Scribe_Values.Look(ref SizeForMale, "SizeForMale", true);
@@ -467,6 +484,47 @@ namespace HeadSetForFA
                 Scribe_Values.Look(ref DefWriteMode, "DefWriteMode", false);
                 Scribe_Values.Look(ref HasFADef, "HasFADef", false);
                 Scribe_Collections.Look(ref NoFaXenos, "NoFaXenos", LookMode.Value);
+            }
+            public bool CanDrawFA(Pawn pawn, bool enableOffsetOrSize = false, bool IsOffset = true)
+            {
+                if (pawn == null)
+                {
+                    return false;
+                }
+                if (pawn.gender == Gender.Male && EnableForMale)
+                {
+                    if (!enableOffsetOrSize)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return IsOffset ? OffsetForMale : SizeForMale;
+                    }
+                }
+                else
+                if(pawn.gender == Gender.Female && EnableForFemale)
+                {
+                    if (!enableOffsetOrSize)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return IsOffset ? OffsetForFemale : SizeForFemale;
+                    }
+                }else
+                if (pawn.gender == Gender.None && EnableForNone)
+                {
+                    if(!enableOffsetOrSize) {
+                        return true;
+                    }
+                    else
+                    {
+                        return IsOffset ? OffsetForNone : SizeForNone;
+                    }
+                }
+                return false;
             }
         }
     }
