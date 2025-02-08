@@ -543,6 +543,7 @@ namespace HeadSetForFA
         public class HSMData : IExposable
         {
             public Vector2 Size = new Vector2(1.5f, 1.5f);
+            public Vector2 OneAndHalf = new Vector2(1.5f, 1.5f);
             public Vector2 OffsetNorth = Vector2.zero;
             public Vector2 OffsetSouth = Vector2.zero;
             public Vector2 OffsetEast = Vector2.zero;
@@ -560,7 +561,7 @@ namespace HeadSetForFA
             public List<string> NoFaXenos = new List<string>();
             public void ExposeData()
             {
-                HSUtility.Look(ref Size, "Size", 2);
+                HSUtility.Look(ref Size, "Size", 2,defaultValue:OneAndHalf);
                 HSUtility.Look(ref OffsetEast, "OffsetEast", 4);
                 HSUtility.Look(ref OffsetSouth, "OffsetSouth", 4);
                 HSUtility.Look(ref OffsetNorth, "OffsetNorth", 4);
