@@ -130,9 +130,10 @@ namespace HeadSetForFA
         private readonly ThingDef raceDef;
         private float floatHight = 0;
         private float unitHight;
+        private bool enableXeno = false;
         public static readonly string noAge = "noAge";
         private static Color WindowBGBorderColor = new ColorInt(97, 108, 122).ToColor;
-        internal Dictionary<string, DrawDataSetting> ownDatas = new Dictionary<string, DrawDataSetting>();
+        private Dictionary<string, DrawDataSetting> ownDatas = new Dictionary<string, DrawDataSetting>();
         private string unfoldStr = "";
         public override string Id
         {
@@ -192,10 +193,11 @@ namespace HeadSetForFA
             }
             Rect rect1 = new Rect(inRect.x + 10f, inRect.y + unitHight + 5, inRect.width - 10, unitHight);
             lh += rect0.height + 5f;
-            if (ButtonText(rect1, "reset".Translate()))
+            if (ButtonText(rect1.LeftPart(0.4f), "reset".Translate()))
             {
                 HSMSetting.datas.Remove(raceDef.defName);
             }
+            CheckboxLabeled(rect1.RightHalf(), "Xeno_Mode".Translate(), ref enableXeno);
             HSMSetting.CheckSettingData(raceDef);
             DrawLineVertical(inRect.x + 5, inRect.y + rect0.height, inRect.height - rect0.height);
             if (HSMSetting.datas.TryGetValue(Id, out Dictionary<string, HSMSetting.HSMData> ageDatas))
@@ -223,7 +225,9 @@ namespace HeadSetForFA
                                 ownDatas.Add(noAge, draw);
 
                             }
-                            rect1.height = draw.fold ? unitHight : 8 * unitHight + 35f;
+                            draw.xenoMode = enableXeno;
+                            int unitCount = draw.xenoMode ? DrawDataSetting.xenotypeDefs.Count+1 : 9;
+                            rect1.height = draw.fold ? unitHight : unitCount  * (unitHight + 5f) - 5f;
                             DrawBox(inRect);
                             if (noAge != unfoldStr)
                             {
@@ -233,7 +237,7 @@ namespace HeadSetForFA
                             {
                                 unfoldStr = noAge;
                             }
-                            
+
                             lh += rect1.height + 5;
                         }
                         else
@@ -257,7 +261,9 @@ namespace HeadSetForFA
                                     draw = new DrawDataSetting();
                                     ownDatas.Add(stage.def.defName, draw);
                                 }
-                                rect1.height = draw.fold ? unitHight : 9 * unitHight + 40f;
+                                draw.xenoMode = enableXeno;
+                                int unitCount = draw.xenoMode ? DrawDataSetting.xenotypeDefs.Count+1 : 9;
+                                rect1.height = draw.fold ? unitHight : unitCount * (unitHight + 5f) - 5f;
                                 DrawBox(inRect);
                                 if (stage.def.defName != unfoldStr)
                                 {
@@ -288,8 +294,9 @@ namespace HeadSetForFA
 
         internal class DrawDataSetting
         {
+            public static readonly List<XenotypeDef> xenotypeDefs = DefDatabase<XenotypeDef>.AllDefs.ToList();
             public bool fold = true;
-
+            public bool xenoMode = false;
             public bool DrawData(Rect inRect, string label, float foldHeight, ref HSMSetting.HSMData data)
             {
                 Rect rect0 = new Rect(inRect.x, inRect.y, inRect.width - 5f, foldHeight);
@@ -314,54 +321,122 @@ namespace HeadSetForFA
                 rect0.x += 5f;
                 rect0.width -= 5f;
                 rect0.y += rect0.height + 5f;
-                Rect lc = rect0.LeftPart(0.33f);
-                Rect mc = rect0.LeftPart(0.667f).RightPart(0.5f);
-                Rect rc = rect0.RightPart(0.33f);
-                CheckboxLabeled(lc, "EnableFAForFemale".Translate(), ref data.EnableForFemale);
-                lc.y += rect0.height + 5f;
-                CheckboxLabeled(lc, "OffsetForFemale".Translate(), ref data.OffsetForFemale, !data.EnableForFemale);
-                lc.y += rect0.height + 5f;
-                CheckboxLabeled(lc, "SizeForFemale".Translate(), ref data.SizeForFemale, !data.EnableForFemale);
-                lc.y += rect0.height + 5f;
-                CheckboxLabeled(mc, "EnableFAForMale".Translate(), ref data.EnableForMale);
-                mc.y += rect0.height + 5f;
-                CheckboxLabeled(mc, "OffsetForMale".Translate(), ref data.OffsetForMale, !data.EnableForMale);
-                mc.y += rect0.height + 5f;
-                CheckboxLabeled(mc, "SizeForMale".Translate(), ref data.SizeForMale, !data.EnableForMale);
-                CheckboxLabeled(rc, "EnableFAForNone".Translate(), ref data.EnableForNone);
-                rc.y += rect0.height + 5f;
-                CheckboxLabeled(rc, "OffsetForNone".Translate(), ref data.OffsetForNone, !data.EnableForNone);
-                rc.y += rect0.height + 5f;
-                CheckboxLabeled(rc, "SizeForNone".Translate(), ref data.SizeForNone, !data.EnableForNone);
-                rect0.y = lc.y;
-                rect0.height *= 5;
-                rect0.height += 20f;
-                Listing_Standard ls = new Listing_Standard();
-                ls.Begin(rect0.LeftPart(0.07f));
-                ls.Label("South".Translate(), foldHeight);
-                ls.GapLine(9f);
-                ls.Label("North".Translate(), foldHeight);
-                ls.GapLine(9f);
-                ls.Label("East".Translate(), foldHeight);
-                ls.GapLine(9f);
-                ls.Label("West".Translate(), foldHeight);
-                ls.GapLine(9f);
-                ls.Label("Size".Translate(), foldHeight);
-                ls.End();
-                ls.Begin(rect0.RightPart(0.92f).LeftPart(0.49f));
-                ls.FloatAdjust("x:" + data.OffsetSouth.x, ref data.OffsetSouth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.FloatAdjust("x:" + data.OffsetNorth.x, ref data.OffsetNorth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.FloatAdjust("x:" + data.OffsetEast.x, ref data.OffsetEast.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.FloatAdjust("x:" + data.OffsetWest.x, ref data.OffsetWest.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.FloatAdjust("heigh".Translate() + data.Size.x, ref data.Size.x, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.End();
-                ls.Begin(rect0.RightPart(0.92f).RightPart(0.49f));
-                ls.FloatAdjust("y:" + data.OffsetSouth.y, ref data.OffsetSouth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.FloatAdjust("y:" + data.OffsetNorth.y, ref data.OffsetNorth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.FloatAdjust("y:" + data.OffsetEast.y, ref data.OffsetEast.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.FloatAdjust("y:" + data.OffsetWest.y, ref data.OffsetWest.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.FloatAdjust("width".Translate() + data.Size.y, ref data.Size.y, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
-                ls.End();
+
+                if (xenoMode)
+                {
+                    Rect iconLoc = new Rect(rect0.x, rect0.y, rect0.height, rect0.height);
+                    Rect radioLoc = new Rect(rect0.x + iconLoc.width + 5f, rect0.y, rect0.width - iconLoc.width - 5f, rect0.height);
+                    for (int i = 0; i < xenotypeDefs.Count; i++)
+                    {
+                        XenotypeDef def = xenotypeDefs[i];
+                        GUI.DrawTexture(iconLoc, def.Icon ?? Texture2D.grayTexture);
+                        if (Mouse.IsOver(rect0))
+                        {
+                            DrawHighlight(rect0);
+                        }
+                        if (RadioButtonLabeled(radioLoc, "Ignore".Translate() + " " + def.label, data.NoFaXenos.Contains(def.defName)))
+                        {
+                            if (data.NoFaXenos.Contains(def.defName))
+                            {
+                                data.NoFaXenos.Remove(def.defName);
+                            }
+                            else
+                            {
+                                data.NoFaXenos.Add(def.defName);
+                            }
+                        }
+                        iconLoc.y += iconLoc.height + 5f;
+                        radioLoc.y += radioLoc.height + 5f;
+                        rect0.y += rect0.height + 5f;
+                    }
+                }
+                else
+                {
+                    Rect lc = rect0.LeftPart(0.33f);
+                    Rect mc = rect0.LeftPart(0.667f).RightPart(0.5f);
+                    Rect rc = rect0.RightPart(0.33f);
+                    if (Mouse.IsOver(lc))
+                    {
+                        DrawHighlight(lc);
+                    }
+                    CheckboxLabeled(lc, "EnableFAForFemale".Translate(), ref data.EnableForFemale);
+                    lc.y += rect0.height + 5f;
+                    if (Mouse.IsOver(lc))
+                    {
+                        DrawHighlight(lc);
+                    }
+                    CheckboxLabeled(lc, "OffsetForFemale".Translate(), ref data.OffsetForFemale, !data.EnableForFemale);
+                    lc.y += rect0.height + 5f;
+                    if (Mouse.IsOver(lc))
+                    {
+                        DrawHighlight(lc);
+                    }
+                    CheckboxLabeled(lc, "SizeForFemale".Translate(), ref data.SizeForFemale, !data.EnableForFemale);
+                    lc.y += rect0.height + 5f;
+                    if (Mouse.IsOver(mc))
+                    {
+                        DrawHighlight(mc);
+                    }
+                    CheckboxLabeled(mc, "EnableFAForMale".Translate(), ref data.EnableForMale);
+                    mc.y += rect0.height + 5f;
+                    if (Mouse.IsOver(mc))
+                    {
+                        DrawHighlight(mc);
+                    }
+                    CheckboxLabeled(mc, "OffsetForMale".Translate(), ref data.OffsetForMale, !data.EnableForMale);
+                    mc.y += rect0.height + 5f;
+                    if (Mouse.IsOver(mc))
+                    {
+                        DrawHighlight(mc);
+                    }
+                    CheckboxLabeled(mc, "SizeForMale".Translate(), ref data.SizeForMale, !data.EnableForMale);
+                    if (Mouse.IsOver(rc))
+                    {
+                        DrawHighlight(rc);
+                    }
+                    CheckboxLabeled(rc, "EnableFAForNone".Translate(), ref data.EnableForNone);
+                    rc.y += rect0.height + 5f;
+                    if (Mouse.IsOver(rc))
+                    {
+                        DrawHighlight(rc);
+                    }
+                    CheckboxLabeled(rc, "OffsetForNone".Translate(), ref data.OffsetForNone, !data.EnableForNone);
+                    rc.y += rect0.height + 5f;
+                    if (Mouse.IsOver(rc))
+                    {
+                        DrawHighlight(rc);
+                    }
+                    CheckboxLabeled(rc, "SizeForNone".Translate(), ref data.SizeForNone, !data.EnableForNone);
+                    rect0.y = lc.y;
+                    rect0.height *= 5;
+                    rect0.height += 20f;
+                    Listing_Standard ls = new Listing_Standard();
+                    ls.Begin(rect0.LeftPart(0.07f));
+                    ls.Label("South".Translate(), foldHeight);
+                    ls.GapLine(9f);
+                    ls.Label("North".Translate(), foldHeight);
+                    ls.GapLine(9f);
+                    ls.Label("East".Translate(), foldHeight);
+                    ls.GapLine(9f);
+                    ls.Label("West".Translate(), foldHeight);
+                    ls.GapLine(9f);
+                    ls.Label("Size".Translate(), foldHeight);
+                    ls.End();
+                    ls.Begin(rect0.RightPart(0.92f).LeftPart(0.49f));
+                    ls.FloatAdjust("x:" + data.OffsetSouth.x, ref data.OffsetSouth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.FloatAdjust("x:" + data.OffsetNorth.x, ref data.OffsetNorth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.FloatAdjust("x:" + data.OffsetEast.x, ref data.OffsetEast.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.FloatAdjust("x:" + data.OffsetWest.x, ref data.OffsetWest.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.FloatAdjust("heigh".Translate() + data.Size.x, ref data.Size.x, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.End();
+                    ls.Begin(rect0.RightPart(0.92f).RightPart(0.49f));
+                    ls.FloatAdjust("y:" + data.OffsetSouth.y, ref data.OffsetSouth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.FloatAdjust("y:" + data.OffsetNorth.y, ref data.OffsetNorth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.FloatAdjust("y:" + data.OffsetEast.y, ref data.OffsetEast.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.FloatAdjust("y:" + data.OffsetWest.y, ref data.OffsetWest.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.FloatAdjust("width".Translate() + data.Size.y, ref data.Size.y, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
+                    ls.End();
+                }
                 return false;
             }
         }
@@ -502,6 +577,34 @@ namespace HeadSetForFA
                 Scribe_Values.Look(ref DefWriteMode, "DefWriteMode", false);
                 Scribe_Collections.Look(ref NoFaXenos, "NoFaXenos", LookMode.Value);
             }
+
+            public bool CanDrawXenoFA(Pawn pawn)
+            {
+                if (CanDrawFA(pawn))
+                {
+                    if (NoFaXenos.NullOrEmpty())
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        if (pawn.genes == null||pawn.genes.Xenotype == null)
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            return !NoFaXenos.Contains(pawn.genes.Xenotype.defName);
+                        }
+                        
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
             public bool CanDrawFA(Pawn pawn, bool enableOffsetOrSize = false, bool IsOffset = true)
             {
                 if (pawn == null)
@@ -566,7 +669,7 @@ namespace HeadSetForFA
                     HSMSetting.datas.Clear();
                 }
             }
-            /*try
+            try
             {
                 HeadSetMod.setting.ExposeData();
             }
@@ -574,7 +677,7 @@ namespace HeadSetForFA
             {
                 HeadSetMod.setting.InitializeData();
                 HeadSetMod.setting.Write();
-            }*/
+            }
             CreateTextStyle();
         }
         internal static void CreateTextStyle()

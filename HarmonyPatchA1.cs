@@ -91,7 +91,7 @@ namespace HeadSetForFA
             }
             if (__result)
             {
-                __result = GetData(pawn).CanDrawFA(pawn);
+                __result = GetData(pawn).CanDrawXenoFA(pawn);
             }
         }
 
