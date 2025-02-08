@@ -10,7 +10,7 @@ namespace HeadSetForFA
 {
     public static class HSUtility
     {
-        public static void FloatAdjust(this Listing_Standard ls, string label, ref float val, float countChange, float min, float max, int keepCount = 0,float maxHeight = 30f,TextAnchor textAnchor = TextAnchor.MiddleCenter)
+        public static void FloatAdjust(this Listing_Standard ls, string label, ref float val, float countChange, float min, float max, int keepCount = 0, float maxHeight = 30f, TextAnchor textAnchor = TextAnchor.MiddleCenter)
         {
             Rect rect = ls.GetRect(maxHeight);
             Rect rect1 = rect.LeftPart(0.2f);
@@ -50,8 +50,6 @@ namespace HeadSetForFA
             }
             ls.Gap(5f);
         }
-
-
 
         internal static void Look(ref Vector2 vector2, string label, int keepCount = 0, Vector2 defaultValue = default(Vector2))
         {
@@ -94,7 +92,7 @@ namespace HeadSetForFA
             {
                 try
                 {
-                    if (Scribe.mode == LoadSaveMode.Saving && dict == null)
+                    if (Scribe.mode == LoadSaveMode.Saving && dict != null)
                     {
                         if (Scribe.mode == LoadSaveMode.Saving)
                         {
@@ -107,11 +105,7 @@ namespace HeadSetForFA
                                     {
                                         valuePairs = new Dictionary<string, HSMSetting.HSMData>();
                                     }
-                                    foreach (string key0 in valuePairs.Keys)
-                                    {
-                                        HSMSetting.HSMData value = valuePairs[key0];
-                                        Scribe_Deep.Look(ref value, false, key0);
-                                    }
+                                    Look(ref valuePairs, key);
                                 }
                                 return;
                             }
@@ -130,20 +124,79 @@ namespace HeadSetForFA
                             }
                             else
                             {
+                                Dictionary<string, Dictionary<string, HSMSetting.HSMData>> d = new Dictionary<string, Dictionary<string, HSMSetting.HSMData>>();
+                                foreach (XmlNode childNode in curXmlParent.ChildNodes)
                                 {
-                                    Dictionary<string, Dictionary<string, HSMSetting.HSMData>> d = new Dictionary<string, Dictionary<string, HSMSetting.HSMData>>();
-                                    foreach (XmlNode childNode in curXmlParent.ChildNodes)
-                                    {
-                                        Dictionary<string, HSMSetting.HSMData> item = new Dictionary<string, HSMSetting.HSMData>();
-                                        foreach (XmlNode childNode2 in childNode.ChildNodes)
-                                        {
-                                            HSMSetting.HSMData data = new HSMSetting.HSMData();
-                                            Scribe_Deep.Look(ref data, false, childNode2.Name);
-                                            item.SetOrAdd(childNode2.Name, data);
-                                        }
-                                        d.SetOrAdd(childNode.Name, item);
-                                    }
+                                    Dictionary<string, HSMSetting.HSMData> item = new Dictionary<string, HSMSetting.HSMData>();
+                                    Look(ref item, childNode.Name);
+                                    d.SetOrAdd(childNode.Name, item);
                                 }
+                                dict = d;
+                            }
+                        }
+                        return;
+                    }
+                    return;
+                }
+                finally
+                {
+                    Scribe.ExitNode();
+                }
+            }
+
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                dict = null;
+            }
+        }
+
+        private static void Look(ref Dictionary<string, HSMSetting.HSMData> dict, string label)
+        {
+            if (Scribe.EnterNode(label))
+            {
+                try
+                {
+                    if (Scribe.mode == LoadSaveMode.Saving && dict != null)
+                    {
+                        if (Scribe.mode == LoadSaveMode.Saving)
+                        {
+                            if (dict != null)
+                            {
+                                foreach (string key in dict.Keys)
+                                {
+                                    HSMSetting.HSMData valuePairs = dict[key];
+                                    if (valuePairs == null)
+                                    {
+                                        valuePairs = new HSMSetting.HSMData();
+                                    }
+
+                                    Scribe_Deep.Look(ref valuePairs, false, key);
+                                }
+                                return;
+                            }
+                            Scribe.saver.WriteAttribute("IsNull", "True");
+                        }
+                    }
+                    else
+                    {
+                        if (Scribe.mode == LoadSaveMode.LoadingVars)
+                        {
+                            XmlNode curXmlParent = Scribe.loader.curXmlParent;
+                            XmlAttribute xmlAttribute = curXmlParent.Attributes["IsNull"];
+                            if (xmlAttribute != null && xmlAttribute.Value.Equals("true", StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                dict = null;
+                            }
+                            else
+                            {
+                                Dictionary<string, HSMSetting.HSMData> d = new Dictionary<string, HSMSetting.HSMData>();
+                                foreach (XmlNode childNode in curXmlParent.ChildNodes)
+                                {
+                                    HSMSetting.HSMData data = new HSMSetting.HSMData();
+                                    Scribe_Deep.Look(ref data, false, childNode.Name);
+                                    d.SetOrAdd(childNode.Name, data);
+                                }
+                                dict = d;
                             }
                         }
                         return;

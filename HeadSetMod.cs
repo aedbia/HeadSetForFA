@@ -93,7 +93,7 @@ namespace HeadSetForFA
             for (int a = 0; a < HSMCache.FARaceList.Count; a++)
             {
                 ThingDef race = HSMCache.FARaceList[a];
-                if (settingsContent.Count == 0 && !settingsContent.ContainsAny(b => b.Id == race.defName))
+                if (!settingsContent.ContainsAny(b => b.Id == race.defName))
                 {
                     settingsContent.Add(new SettingsUnit(outRect.width, outRect.height / 2f, outRect.height / 20f, race));
                 }
@@ -132,7 +132,8 @@ namespace HeadSetForFA
         private float unitHight;
         public static readonly string noAge = "noAge";
         private static Color WindowBGBorderColor = new ColorInt(97, 108, 122).ToColor;
-        private Dictionary<string, DrawDataSetting> ownDatas = new Dictionary<string, DrawDataSetting>();
+        internal Dictionary<string, DrawDataSetting> ownDatas = new Dictionary<string, DrawDataSetting>();
+        private string unfoldStr = "";
         public override string Id
         {
             get
@@ -224,7 +225,15 @@ namespace HeadSetForFA
                             }
                             rect1.height = draw.fold ? unitHight : 8 * unitHight + 35f;
                             DrawBox(inRect);
-                            draw.DrawData(rect1, noAge, unitHight, ref data);
+                            if (noAge != unfoldStr)
+                            {
+                                draw.fold = true;
+                            }
+                            if (draw.DrawData(rect1, ">= 0" + "years_old".Translate(), unitHight, ref data))
+                            {
+                                unfoldStr = noAge;
+                            }
+                            
                             lh += rect1.height + 5;
                         }
                         else
@@ -247,11 +256,17 @@ namespace HeadSetForFA
                                 {
                                     draw = new DrawDataSetting();
                                     ownDatas.Add(stage.def.defName, draw);
-
                                 }
                                 rect1.height = draw.fold ? unitHight : 9 * unitHight + 40f;
                                 DrawBox(inRect);
-                                draw.DrawData(rect1, stage.def.label + " : " + stage.minAge + " " + "years_old".Translate(), unitHight, ref data);
+                                if (stage.def.defName != unfoldStr)
+                                {
+                                    draw.fold = true;
+                                }
+                                if (draw.DrawData(rect1, stage.def.label + " : >= " + stage.minAge + " " + "years_old".Translate(), unitHight, ref data))
+                                {
+                                    unfoldStr = stage.def.defName;
+                                }
                                 rect1.y += rect1.height + 5f;
                                 lh += rect1.height + 5f;
                             }
@@ -275,7 +290,7 @@ namespace HeadSetForFA
         {
             public bool fold = true;
 
-            public void DrawData(Rect inRect, string label, float foldHeight, ref HSMSetting.HSMData data)
+            public bool DrawData(Rect inRect, string label, float foldHeight, ref HSMSetting.HSMData data)
             {
                 Rect rect0 = new Rect(inRect.x, inRect.y, inRect.width - 5f, foldHeight);
                 DrawBoxSolid(rect0, Color.gray);
@@ -287,10 +302,14 @@ namespace HeadSetForFA
                 if (ButtonInvisible(rect0))
                 {
                     fold = !fold;
+                    if (!fold)
+                    {
+                        return true;
+                    }
                 }
                 if (fold)
                 {
-                    return;
+                    return false;
                 }
                 rect0.x += 5f;
                 rect0.width -= 5f;
@@ -300,15 +319,15 @@ namespace HeadSetForFA
                 Rect rc = rect0.RightPart(0.33f);
                 CheckboxLabeled(lc, "EnableFAForFemale".Translate(), ref data.EnableForFemale);
                 lc.y += rect0.height + 5f;
-                CheckboxLabeled(lc, "OffsetForFemale".Translate(), ref data.OffsetForFemale,!data.EnableForFemale);
+                CheckboxLabeled(lc, "OffsetForFemale".Translate(), ref data.OffsetForFemale, !data.EnableForFemale);
                 lc.y += rect0.height + 5f;
                 CheckboxLabeled(lc, "SizeForFemale".Translate(), ref data.SizeForFemale, !data.EnableForFemale);
                 lc.y += rect0.height + 5f;
                 CheckboxLabeled(mc, "EnableFAForMale".Translate(), ref data.EnableForMale);
                 mc.y += rect0.height + 5f;
-                CheckboxLabeled(mc, "OffsetForMale".Translate(), ref data.OffsetForMale,!data.EnableForMale);
+                CheckboxLabeled(mc, "OffsetForMale".Translate(), ref data.OffsetForMale, !data.EnableForMale);
                 mc.y += rect0.height + 5f;
-                CheckboxLabeled(mc, "SizeForMale".Translate(), ref data.SizeForMale,!data.EnableForMale);
+                CheckboxLabeled(mc, "SizeForMale".Translate(), ref data.SizeForMale, !data.EnableForMale);
                 CheckboxLabeled(rc, "EnableFAForNone".Translate(), ref data.EnableForNone);
                 rc.y += rect0.height + 5f;
                 CheckboxLabeled(rc, "OffsetForNone".Translate(), ref data.OffsetForNone, !data.EnableForNone);
@@ -343,9 +362,9 @@ namespace HeadSetForFA
                 ls.FloatAdjust("y:" + data.OffsetWest.y, ref data.OffsetWest.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
                 ls.FloatAdjust("width".Translate() + data.Size.y, ref data.Size.y, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
                 ls.End();
+                return false;
             }
         }
-
 
     }
 
@@ -464,7 +483,6 @@ namespace HeadSetForFA
             public bool OffsetForNone = true;
             public bool SizeForNone = true;
             public List<string> NoFaXenos = new List<string>();
-            public bool HasFADef = false;
             public void ExposeData()
             {
                 HSUtility.Look(ref Size, "Size", 2);
@@ -482,7 +500,6 @@ namespace HeadSetForFA
                 Scribe_Values.Look(ref SizeForMale, "SizeForMale", true);
                 Scribe_Values.Look(ref SizeForNone, "SizeForNone", true);
                 Scribe_Values.Look(ref DefWriteMode, "DefWriteMode", false);
-                Scribe_Values.Look(ref HasFADef, "HasFADef", false);
                 Scribe_Collections.Look(ref NoFaXenos, "NoFaXenos", LookMode.Value);
             }
             public bool CanDrawFA(Pawn pawn, bool enableOffsetOrSize = false, bool IsOffset = true)
@@ -503,7 +520,7 @@ namespace HeadSetForFA
                     }
                 }
                 else
-                if(pawn.gender == Gender.Female && EnableForFemale)
+                if (pawn.gender == Gender.Female && EnableForFemale)
                 {
                     if (!enableOffsetOrSize)
                     {
@@ -513,10 +530,12 @@ namespace HeadSetForFA
                     {
                         return IsOffset ? OffsetForFemale : SizeForFemale;
                     }
-                }else
+                }
+                else
                 if (pawn.gender == Gender.None && EnableForNone)
                 {
-                    if(!enableOffsetOrSize) {
+                    if (!enableOffsetOrSize)
+                    {
                         return true;
                     }
                     else
@@ -547,7 +566,7 @@ namespace HeadSetForFA
                     HSMSetting.datas.Clear();
                 }
             }
-            try
+            /*try
             {
                 HeadSetMod.setting.ExposeData();
             }
@@ -555,7 +574,7 @@ namespace HeadSetForFA
             {
                 HeadSetMod.setting.InitializeData();
                 HeadSetMod.setting.Write();
-            }
+            }*/
             CreateTextStyle();
         }
         internal static void CreateTextStyle()
