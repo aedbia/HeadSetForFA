@@ -72,13 +72,14 @@ namespace HeadSetForFA
         {
             Rect rect0 = inRect.TopPart(0.04f);
             Rect sl = new Rect(rect0.x, rect0.y, rect0.height, rect0.height);
-            Rect el = new Rect(rect0.x + rect0.height + 5f, rect0.y, rect0.width - rect0.height - 10f, rect0.height);
+            Rect el = new Rect(rect0.x + rect0.height + 5f, rect0.y, rect0.width/2 - rect0.height - 10f, rect0.height);
             search = TextArea(el, search);
             if (ButtonImage(sl, TexButton.SearchButton))
             {
                 isFliter = true;
                 GUI.DrawTexture(sl, TexButton.SearchButton);
             }
+            CheckboxLabeled(rect0.RightHalf(),"Enable_For_Not_Conloist".Translate(),ref HSMSetting.EnableForNotConloist);
             Rect rect1 = inRect.BottomPart(0.95f);
             DrawWindowBackground(rect1);
             Rect outRect = rect1.ContractedBy(5f);
@@ -446,11 +447,13 @@ namespace HeadSetForFA
     public class HSMSetting : ModSettings
     {
         public static bool FirstLoad = true;
+        public static bool EnableForNotConloist = true;
         public static Dictionary<string, Dictionary<string, HSMData>> datas = new Dictionary<string, Dictionary<string, HSMData>>();
         public override void ExposeData()
         {
             HSUtility.Look(ref datas, "datas");
             Scribe_Values.Look(ref FirstLoad, "FirstLoad", true);
+            Scribe_Values.Look(ref EnableForNotConloist, "EnableForNotConloist", true);
         }
         public void InitializeData()
         {
@@ -609,6 +612,10 @@ namespace HeadSetForFA
             public bool CanDrawFA(Pawn pawn, bool enableOffsetOrSize = false, bool IsOffset = true)
             {
                 if (pawn == null)
+                {
+                    return false;
+                }
+                if (EnableForNotConloist&&!pawn.IsColonist)
                 {
                     return false;
                 }

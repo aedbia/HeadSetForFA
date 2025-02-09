@@ -27,19 +27,29 @@ namespace HeadSetForFA
             }
             catch (Exception e)
             {
-                Log.Message("HeadSetForFA OffsetFix Harmony Patching failed");
+                Log.Warning("HeadSetForFA OffsetFix Harmony Patching failed");
             }
             try
             {
-                MethodInfo method0 = AccessTools.Method(typeof(PawnRenderTree), nameof(PawnRenderTree.TryGetMatrix));
+                MethodInfo method0 = AccessTools.Method(typeof(HumanlikeMeshPoolUtility), nameof(HumanlikeMeshPoolUtility.GetHumanlikeHairSetForPawn));
                 if (method0 != null)
                 {
-                    harmony.Patch(method0, postfix: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Postfix_TryGetMatrix))));
+                    harmony.Unpatch(method0, HarmonyPatchType.Postfix, "rimworld.Nals.FacialAnimation");
+                }
+                MethodInfo method1 = AccessTools.Method(typeof(HumanlikeMeshPoolUtility), nameof(HumanlikeMeshPoolUtility.GetHumanlikeBeardSetForPawn));
+                if (method1 != null)
+                {
+                    harmony.Unpatch(method1, HarmonyPatchType.Postfix, "rimworld.Nals.FacialAnimation");
+                }
+                MethodInfo method2 = AccessTools.Method(typeof(PawnRenderTree), nameof(PawnRenderTree.TryGetMatrix));
+                if (method2 != null)
+                {
+                    harmony.Patch(method2, postfix: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Postfix_TryGetMatrix))));
                 }
             }
             catch (Exception e)
             {
-                Log.Message("HeadSetForFA ScaleFix Harmony Patching failed");
+                Log.Warning("HeadSetForFA ScaleFix Harmony Patching failed");
             }
             try
             {
@@ -51,7 +61,7 @@ namespace HeadSetForFA
             }
             catch (Exception e)
             {
-                Log.Message("HeadSetForFA SettingPatchOffset Harmony Patching failed");
+                Log.Warning("HeadSetForFA SettingPatchOffset Harmony Patching failed");
             }
             try
             {
@@ -63,7 +73,7 @@ namespace HeadSetForFA
             }
             catch (Exception e)
             {
-                Log.Message("HeadSetForFA SettingPatchScale Harmony Patching failed");
+                Log.Warning("HeadSetForFA SettingPatchScale Harmony Patching failed");
             }
             try
             {
@@ -79,11 +89,61 @@ namespace HeadSetForFA
             }
             catch (Exception e)
             {
-                Log.Message("HeadSetForFA SettingPatchDraw Harmony Patching failed");
+                Log.Warning("HeadSetForFA SettingPatchDraw Harmony Patching failed");
             }
+            /*try
+            {
+                Type type = AccessTools.TypeByName("FacialAnimation.FAHelper");
+                if (type != null)
+                {
+                    MethodInfo method0 = AccessTools.Method(type, "ShouldDrawPawn");
+                    if (method0 != null)
+                    {
+                        harmony.Patch(method0, prefix: new HarmonyMethod(typeof(HarmonyPatchA1).GetMethod(nameof(Prefix_ShouldDrawPawn))));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Warning("HeadSetForFA SettingPatchDraw Harmony Patching failed");
+            }*/
         }
 
-        public static void Postfix_CheckEnableDrawing(Pawn pawn,ref bool __result)
+        /*public static bool Prefix_ShouldDrawPawn(Pawn pawn, ref bool __result)
+        {
+            __result = DrawPawn(pawn);
+            return false;
+        }
+
+        private static bool DrawPawn(Pawn pawn)
+        {
+            if (pawn == null)
+            {
+                return false;
+            }
+            Pawn_DrawTracker drawer = pawn.Drawer;
+            bool flag;
+            if (drawer == null)
+            {
+                flag = false;
+            }
+            else
+            {
+                PawnRenderer renderer = drawer.renderer;
+                RotDrawMode? rotDrawMode = (renderer != null) ? new RotDrawMode?(renderer.CurRotDrawMode) : null;
+                RotDrawMode rotDrawMode2 = RotDrawMode.Dessicated;
+                flag = (rotDrawMode.GetValueOrDefault() == rotDrawMode2 & rotDrawMode != null);
+            }
+            if (flag)
+            {
+                return false;
+            }
+            
+            return false;
+        }*/
+
+
+        public static void Postfix_CheckEnableDrawing(Pawn pawn, ref bool __result)
         {
             if (pawn == null)
             {
@@ -105,7 +165,7 @@ namespace HeadSetForFA
             }
             if (!ageData.CanDrawFA(pawn, true, false))
             {
-                vector2 = new Vector2(1.5f,1.5f);
+                vector2 = new Vector2(1.5f, 1.5f);
             }
             else
             {
@@ -191,11 +251,20 @@ namespace HeadSetForFA
                     {
                         matrix *= Matrix4x4.Translate(offset);
                     }
-                    Vector2 FAScale = GraphicHelper.GetHeadMeshSet(parms.pawn) / 1.5f;
-                    if (FAScale != Vector2.one)
-                    {
-                        matrix *= Matrix4x4.Scale(new Vector3(FAScale.x, 1f, FAScale.y));
-                    }
+                    SetScale(parms.pawn, ref matrix);
+                }
+            }
+            else
+            if (node.Props.workerClass == typeof(PawnRenderNodeWorker_Beard) || node.Props.nodeClass == typeof(PawnRenderNode_Hair) || node.Props.workerClass == typeof(PawnRenderNodeWorker_Tattoo_Head))
+            {
+                SetScale(parms.pawn,ref matrix);
+            }
+            void SetScale(Pawn pawn,ref Matrix4x4 matrix0)
+            {
+                Vector2 FAScale = GraphicHelper.GetHeadMeshSet(pawn) / 1.5f;
+                if (FAScale != Vector2.one)
+                {
+                    matrix0 *= Matrix4x4.Scale(new Vector3(FAScale.x, 1f, FAScale.y));
                 }
             }
         }
