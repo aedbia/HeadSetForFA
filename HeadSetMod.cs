@@ -72,14 +72,14 @@ namespace HeadSetForFA
         {
             Rect rect0 = inRect.TopPart(0.04f);
             Rect sl = new Rect(rect0.x, rect0.y, rect0.height, rect0.height);
-            Rect el = new Rect(rect0.x + rect0.height + 5f, rect0.y, rect0.width/2 - rect0.height - 10f, rect0.height);
+            Rect el = new Rect(rect0.x + rect0.height + 5f, rect0.y, rect0.width / 2 - rect0.height - 10f, rect0.height);
             search = TextArea(el, search);
             if (ButtonImage(sl, TexButton.SearchButton))
             {
                 isFliter = true;
                 GUI.DrawTexture(sl, TexButton.SearchButton);
             }
-            CheckboxLabeled(rect0.RightHalf(),"Enable_For_Not_Conloist".Translate(),ref HSMSetting.EnableForNotConloist);
+            CheckboxLabeled(rect0.RightHalf(), "Enable_For_Not_Colonist".Translate(), ref HSMSetting.EnableForNotColonist);
             Rect rect1 = inRect.BottomPart(0.95f);
             DrawWindowBackground(rect1);
             Rect outRect = rect1.ContractedBy(5f);
@@ -132,6 +132,7 @@ namespace HeadSetForFA
         private float floatHight = 0;
         private float unitHight;
         private bool enableXeno = false;
+        private bool BaseSetting = false;
         public static readonly string noAge = "noAge";
         private static Color WindowBGBorderColor = new ColorInt(97, 108, 122).ToColor;
         private Dictionary<string, DrawDataSetting> ownDatas = new Dictionary<string, DrawDataSetting>();
@@ -194,11 +195,13 @@ namespace HeadSetForFA
             }
             Rect rect1 = new Rect(inRect.x + 10f, inRect.y + unitHight + 5, inRect.width - 10, unitHight);
             lh += rect0.height + 5f;
-            if (ButtonText(rect1.LeftPart(0.4f), "reset".Translate()))
+            if (ButtonText(rect1.LeftPart(0.3f), "reset".Translate()))
             {
                 HSMSetting.datas.Remove(raceDef.defName);
             }
-            CheckboxLabeled(rect1.RightHalf(), "Xeno_Mode".Translate(), ref enableXeno);
+            Rect cr = rect1.RightPart(0.65f);
+            CheckboxLabeled(cr.RightHalf(), "Xeno_Mode".Translate(), ref enableXeno);
+            CheckboxLabeled(cr.LeftHalf(), "BaseHairSettings".Translate(), ref BaseSetting);
             HSMSetting.CheckSettingData(raceDef);
             DrawLineVertical(inRect.x + 5, inRect.y + rect0.height, inRect.height - rect0.height);
             if (HSMSetting.datas.TryGetValue(Id, out Dictionary<string, HSMSetting.HSMData> ageDatas))
@@ -227,8 +230,9 @@ namespace HeadSetForFA
 
                             }
                             draw.xenoMode = enableXeno;
-                            int unitCount = draw.xenoMode ? DrawDataSetting.xenotypeDefs.Count+1 : 9;
-                            rect1.height = draw.fold ? unitHight : unitCount  * (unitHight + 5f) - 5f;
+                            draw.BaseOffsetAndScale = BaseSetting;
+                            int unitCount = draw.xenoMode ? DrawDataSetting.xenotypeDefs.Count + 1 : 9;
+                            rect1.height = draw.fold ? unitHight : unitCount * (unitHight + 5f) - 5f;
                             DrawBox(inRect);
                             if (noAge != unfoldStr)
                             {
@@ -263,7 +267,8 @@ namespace HeadSetForFA
                                     ownDatas.Add(stage.def.defName, draw);
                                 }
                                 draw.xenoMode = enableXeno;
-                                int unitCount = draw.xenoMode ? DrawDataSetting.xenotypeDefs.Count+1 : 9;
+                                draw.BaseOffsetAndScale = BaseSetting;
+                                int unitCount = draw.xenoMode ? DrawDataSetting.xenotypeDefs.Count + 1 : 9;
                                 rect1.height = draw.fold ? unitHight : unitCount * (unitHight + 5f) - 5f;
                                 DrawBox(inRect);
                                 if (stage.def.defName != unfoldStr)
@@ -298,6 +303,7 @@ namespace HeadSetForFA
             public static readonly List<XenotypeDef> xenotypeDefs = DefDatabase<XenotypeDef>.AllDefs.ToList();
             public bool fold = true;
             public bool xenoMode = false;
+            public bool BaseOffsetAndScale = false;
             public bool DrawData(Rect inRect, string label, float foldHeight, ref HSMSetting.HSMData data)
             {
                 Rect rect0 = new Rect(inRect.x, inRect.y, inRect.width - 5f, foldHeight);
@@ -305,7 +311,8 @@ namespace HeadSetForFA
                 Rect bl = new Rect(rect0.x + rect0.width - rect0.height - 5f, rect0.y, rect0.height, rect0.height);
                 GUI.DrawTexture(bl, fold ? TexButton.ReorderDown : TexButton.ReorderUp);
                 rect0.x += 5f;
-                Label(rect0, label);
+                string text = BaseOffsetAndScale ? "(HairBaseOffsetAndSize)".Translate().RawText : "";
+                Label(rect0, label + text);
                 rect0.x -= 5f;
                 if (ButtonInvisible(rect0))
                 {
@@ -423,20 +430,41 @@ namespace HeadSetForFA
                     ls.GapLine(9f);
                     ls.Label("Size".Translate(), foldHeight);
                     ls.End();
-                    ls.Begin(rect0.RightPart(0.92f).LeftPart(0.49f));
-                    ls.FloatAdjust("x:" + data.OffsetSouth.x, ref data.OffsetSouth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.FloatAdjust("x:" + data.OffsetNorth.x, ref data.OffsetNorth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.FloatAdjust("x:" + data.OffsetEast.x, ref data.OffsetEast.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.FloatAdjust("x:" + data.OffsetWest.x, ref data.OffsetWest.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.FloatAdjust("heigh".Translate() + data.Size.x, ref data.Size.x, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.End();
-                    ls.Begin(rect0.RightPart(0.92f).RightPart(0.49f));
-                    ls.FloatAdjust("y:" + data.OffsetSouth.y, ref data.OffsetSouth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.FloatAdjust("y:" + data.OffsetNorth.y, ref data.OffsetNorth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.FloatAdjust("y:" + data.OffsetEast.y, ref data.OffsetEast.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.FloatAdjust("y:" + data.OffsetWest.y, ref data.OffsetWest.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.FloatAdjust("width".Translate() + data.Size.y, ref data.Size.y, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
-                    ls.End();
+
+                    if (!BaseOffsetAndScale)
+                    {
+                        ls.Begin(rect0.RightPart(0.92f).LeftPart(0.49f));
+                        ls.FloatAdjust("x:" + data.OffsetSouth.x.ToString("F2"), ref data.OffsetSouth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("x:" + data.OffsetNorth.x.ToString("F2"), ref data.OffsetNorth.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("x:" + data.OffsetEast.x.ToString("F2"), ref data.OffsetEast.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("x:" + data.OffsetWest.x.ToString("F2"), ref data.OffsetWest.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("heigh".Translate() + data.Size.x.ToString("F2"), ref data.Size.x, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.End();
+                        ls.Begin(rect0.RightPart(0.92f).RightPart(0.49f));
+                        ls.FloatAdjust("y:" + data.OffsetSouth.y.ToString("F2"), ref data.OffsetSouth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("y:" + data.OffsetNorth.y.ToString("F2"), ref data.OffsetNorth.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("y:" + data.OffsetEast.y.ToString("F2"), ref data.OffsetEast.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("y:" + data.OffsetWest.y.ToString("F2"), ref data.OffsetWest.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("width".Translate() + data.Size.y.ToString("F2"), ref data.Size.y, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.End();
+                    }
+                    else
+                    {
+                        ls.Begin(rect0.RightPart(0.92f).LeftPart(0.49f));
+                        ls.FloatAdjust("x:" + data.BaseHairOffsetS.x.ToString("F2"), ref data.BaseHairOffsetS.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("x:" + data.BaseHairOffsetN.x.ToString("F2"), ref data.BaseHairOffsetN.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("x:" + data.BaseHairOffsetE.x.ToString("F2"), ref data.BaseHairOffsetE.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("x:" + data.BaseHairOffsetW.x.ToString("F2"), ref data.BaseHairOffsetW.x, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("heigh".Translate() + data.BaseSize.x.ToString("F2"), ref data.BaseSize.x, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.End();
+                        ls.Begin(rect0.RightPart(0.92f).RightPart(0.49f));
+                        ls.FloatAdjust("y:" + data.BaseHairOffsetS.y.ToString("F2"), ref data.BaseHairOffsetS.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("y:" + data.BaseHairOffsetN.y.ToString("F2"), ref data.BaseHairOffsetN.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("y:" + data.BaseHairOffsetE.y.ToString("F2"), ref data.BaseHairOffsetE.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("y:" + data.BaseHairOffsetW.y.ToString("F2"), ref data.BaseHairOffsetW.y, 0.01f, -1, 1, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.FloatAdjust("width".Translate() + data.BaseSize.y.ToString("F2"), ref data.BaseSize.y, 0.01f, 0.5f, 2, 2, foldHeight, TextAnchor.MiddleLeft);
+                        ls.End();
+                    }
                 }
                 return false;
             }
@@ -447,13 +475,13 @@ namespace HeadSetForFA
     public class HSMSetting : ModSettings
     {
         public static bool FirstLoad = true;
-        public static bool EnableForNotConloist = true;
+        public static bool EnableForNotColonist = true;
         public static Dictionary<string, Dictionary<string, HSMData>> datas = new Dictionary<string, Dictionary<string, HSMData>>();
         public override void ExposeData()
         {
             HSUtility.Look(ref datas, "datas");
             Scribe_Values.Look(ref FirstLoad, "FirstLoad", true);
-            Scribe_Values.Look(ref EnableForNotConloist, "EnableForNotConloist", true);
+            Scribe_Values.Look(ref EnableForNotColonist, "EnableForNotColonist", true);
         }
         public void InitializeData()
         {
@@ -551,6 +579,11 @@ namespace HeadSetForFA
             public Vector2 OffsetSouth = Vector2.zero;
             public Vector2 OffsetEast = Vector2.zero;
             public Vector2 OffsetWest = Vector2.zero;
+            public Vector2 BaseSize = Vector2.one;
+            public Vector2 BaseHairOffsetN = Vector2.zero;
+            public Vector2 BaseHairOffsetS = Vector2.zero;
+            public Vector2 BaseHairOffsetE = Vector2.zero;
+            public Vector2 BaseHairOffsetW = Vector2.zero;
             public bool DefWriteMode = false;
             public bool EnableForFemale = true;
             public bool OffsetForFemale = true;
@@ -564,11 +597,16 @@ namespace HeadSetForFA
             public List<string> NoFaXenos = new List<string>();
             public void ExposeData()
             {
-                HSUtility.Look(ref Size, "Size", 2,defaultValue:OneAndHalf);
+                HSUtility.Look(ref Size, "Size", 2, defaultValue: OneAndHalf);
                 HSUtility.Look(ref OffsetEast, "OffsetEast", 4);
                 HSUtility.Look(ref OffsetSouth, "OffsetSouth", 4);
                 HSUtility.Look(ref OffsetNorth, "OffsetNorth", 4);
                 HSUtility.Look(ref OffsetWest, "OffsetWest", 4);
+                HSUtility.Look(ref BaseSize, "BaseHairSize", 2, defaultValue: Vector2.one);
+                HSUtility.Look(ref BaseHairOffsetN, "BaseHairOffsetN", 4);
+                HSUtility.Look(ref BaseHairOffsetS, "BaseHairOffsetS", 4);
+                HSUtility.Look(ref BaseHairOffsetE, "BaseHairOffsetE", 4);
+                HSUtility.Look(ref BaseHairOffsetW, "BaseHairOffsetW", 4);
                 Scribe_Values.Look(ref EnableForFemale, "EnableFAForFemale", true);
                 Scribe_Values.Look(ref OffsetForFemale, "OffsetForFemale", true);
                 Scribe_Values.Look(ref EnableForMale, "EnableFAForMale", true);
@@ -592,7 +630,7 @@ namespace HeadSetForFA
                     }
                     else
                     {
-                        if (pawn.genes == null||pawn.genes.Xenotype == null)
+                        if (pawn.genes == null || pawn.genes.Xenotype == null)
                         {
                             return true;
                         }
@@ -600,7 +638,7 @@ namespace HeadSetForFA
                         {
                             return !NoFaXenos.Contains(pawn.genes.Xenotype.defName);
                         }
-                        
+
                     }
                 }
                 else
@@ -615,7 +653,7 @@ namespace HeadSetForFA
                 {
                     return false;
                 }
-                if (EnableForNotConloist&&!pawn.IsColonist)
+                if (!EnableForNotColonist && !pawn.IsColonist)
                 {
                     return false;
                 }
@@ -655,6 +693,31 @@ namespace HeadSetForFA
                     }
                 }
                 return false;
+            }
+
+            public Vector2 GetOffset(int face, bool addBase = false)
+            {
+                if (addBase)
+                {
+                    switch (face)
+                    {
+                        case 0: return OffsetNorth + BaseHairOffsetN;
+                        case 1: return OffsetEast + BaseHairOffsetE;
+                        case 2: return OffsetSouth + BaseHairOffsetS;
+                        case 3: return OffsetWest + BaseHairOffsetW;
+                    }
+                }
+                else
+                {
+                    switch (face)
+                    {
+                        case 0: return OffsetNorth;
+                        case 1: return OffsetEast;
+                        case 2: return OffsetSouth;
+                        case 3: return OffsetWest;
+                    }
+                }
+                return Vector2.zero;
             }
         }
     }

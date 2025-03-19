@@ -2,9 +2,7 @@
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 using UnityEngine;
 using Verse;
 
@@ -17,7 +15,7 @@ namespace HeadSetForFA
         static HarmonyPatchA1()
         {
             Harmony harmony = new Harmony("ABFAA.HeadSetForFA");
-            try
+            /*try
             {
                 MethodInfo method0 = AccessTools.Method(typeof(PawnRenderNodeWorker), nameof(PawnRenderNodeWorker.OffsetFor));
                 if (method0 != null)
@@ -28,7 +26,7 @@ namespace HeadSetForFA
             catch (Exception e)
             {
                 Log.Warning("HeadSetForFA OffsetFix Harmony Patching failed");
-            }
+            }*/
             try
             {
                 MethodInfo method0 = AccessTools.Method(typeof(HumanlikeMeshPoolUtility), nameof(HumanlikeMeshPoolUtility.GetHumanlikeHairSetForPawn));
@@ -155,6 +153,7 @@ namespace HeadSetForFA
             }
         }
 
+
         public static bool Prefix_GetHeadMeshSet(Pawn pawn, ref Vector2 __result)
         {
             Vector2 vector2;
@@ -246,30 +245,60 @@ namespace HeadSetForFA
             {
                 if (FacialAnimationMod.Settings.IgnoreHairMeshParams)
                 {
-                    Vector3 offset = GraphicHelper.GetHeadOffset(parms.pawn)[parms.facing.AsInt];
-                    if (offset != Vector3.zero)
-                    {
-                        matrix *= Matrix4x4.Translate(offset);
-                    }
-                    SetScale(parms.pawn, ref matrix);
+                    SetScaleAndOffset(parms.pawn, parms.facing.AsInt, ref matrix);
                 }
             }
             else
-            if (node.Props.workerClass == typeof(PawnRenderNodeWorker_Beard) || node.Props.nodeClass == typeof(PawnRenderNode_Hair) || node.Props.workerClass == typeof(PawnRenderNodeWorker_Tattoo_Head))
+            if (node.Props.workerClass == typeof(PawnRenderNodeWorker_Beard) || node.Props.workerClass == typeof(PawnRenderNodeWorker_Tattoo_Head))
             {
-                SetScale(parms.pawn,ref matrix);
+                SetScaleAndOffset(parms.pawn, parms.facing.AsInt, ref matrix);
             }
-            void SetScale(Pawn pawn,ref Matrix4x4 matrix0)
+            else if (node.Props.nodeClass == typeof(PawnRenderNode_Hair))
             {
-                Vector2 FAScale = GraphicHelper.GetHeadMeshSet(pawn) / 1.5f;
+                SetScaleAndOffset(parms.pawn, parms.facing.AsInt, ref matrix, true);
+            }
+            void SetScaleAndOffset(Pawn pawn, int face, ref Matrix4x4 matrix0, bool AddBase = false)
+            {
+                HSMSetting.HSMData ageData = GetData(pawn);
+                Vector2 FAScale = Vector2.one;
+                Vector3 faceSet = Vector2.zero;
+                if (ageData == null)
+                {
+                    FAScale = GraphicHelper.GetHeadMeshSet(pawn) / 1.5f;
+                    faceSet = GraphicHelper.GetHeadOffset(pawn)[face];
+                }
+                else if (ageData.CanDrawFA(pawn, true, false))
+                {
+                    Vector2 vector2 = new Vector2(ageData.Size.x, ageData.Size.y);
+                    faceSet = Vector3.zero;
+                    if (AddBase)
+                    {
+                        vector2.x *= ageData.BaseSize.x;
+                        vector2.y *= ageData.BaseSize.y;
+                        Vector2 a = ageData.GetOffset(face, true);
+                        faceSet = new Vector3(a.x, 0, a.y);
+                    }
+                    else
+                    {
+                        Vector2 a = ageData.GetOffset(face);
+                        faceSet = new Vector3(a.x, 0, a.y);
+                    }
+                    FAScale = pawn.story.headType.narrow ? new Vector2((float)(vector2.x / 1.086995905648755), vector2.y) : vector2;
+                    FAScale /= 1.5f;
+                }
                 if (FAScale != Vector2.one)
                 {
                     matrix0 *= Matrix4x4.Scale(new Vector3(FAScale.x, 1f, FAScale.y));
                 }
+                if (faceSet != Vector3.zero)
+                {
+                    matrix0 *= Matrix4x4.Translate(faceSet);
+                }
+
             }
         }
 
-        public static IEnumerable<CodeInstruction> Transpiler_OffsetFor(IEnumerable<CodeInstruction> instructions)
+        /*public static IEnumerable<CodeInstruction> Transpiler_OffsetFor(IEnumerable<CodeInstruction> instructions)
         {
             MethodInfo patchinfo = AccessTools.Method(typeof(HarmonyPatchA1), nameof(GetOffset));
             List<CodeInstruction> codes = instructions.ToList();
@@ -311,7 +340,7 @@ namespace HeadSetForFA
                 }
                 return offset;
             }
-        }
+        }*/
 
         /*public static IEnumerable<CodeInstruction> TranPrefixRenderPawnInternal(IEnumerable<CodeInstruction> codeInstructions, ILGenerator generator)
         {
